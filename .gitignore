@@ -1,0 +1,7 @@
+# Ignore all PDF files
+*.pdf
+
+# Ignore all Word documents
+*.doc
+*.docx
+
