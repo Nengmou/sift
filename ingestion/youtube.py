@@ -53,19 +53,17 @@ class YouTubeConnector(BaseConnector):
             return identifier
 
         resp = await client.get(
-            f"{BASE_URL}/search",
+            f"{BASE_URL}/channels",
             params={
-                "part": "snippet",
-                "q": identifier[1:],
-                "type": "channel",
-                "maxResults": 1,
+                "part": "id",
+                "forHandle": identifier,
                 "key": self.api_key,
             },
         )
         resp.raise_for_status()
         data = resp.json()
         for item in data.get("items", []):
-            channel_id = item.get("snippet", {}).get("channelId")
+            channel_id = item.get("id")
             if channel_id:
                 return channel_id
         return None
