@@ -1,7 +1,12 @@
-# Ignore all PDF files
-*.pdf
+# macOS system files
+.DS_Store
 
-# Ignore all Word documents
+# Local environment variables
+.env
+.env.local
+
+# Ignore all PDF and doc files
+*.pdf
 *.doc
 *.docx
 
