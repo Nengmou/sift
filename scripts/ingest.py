@@ -4,6 +4,7 @@ Run: python -m scripts.ingest
 Railway: schedule every 2–4 hours.
 """
 import asyncio
+import argparse
 import logging
 from difflib import SequenceMatcher
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -20,6 +21,8 @@ from ingestion.youtube import YouTubeConnector
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+SUPPORTED_SOURCES = ("hn", "rss", "reddit", "twitter", "youtube")
 
 RECENT_DEDUPE_WINDOW = 500
 TRACKING_PARAMS = {
@@ -87,27 +90,81 @@ def load_recent_items(db: SessionLocal) -> list[ContentItem]:
     )
 
 
-async def run_ingestion() -> None:
+def existing_source_ids(
+    db: SessionLocal,
+    source: str,
+    incoming_source_ids: set[str],
+) -> set[str]:
+    if not incoming_source_ids:
+        return set()
+    rows = (
+        db.query(ContentItem.source_id)
+        .filter(
+            ContentItem.source == source,
+            ContentItem.source_id.in_(incoming_source_ids),
+        )
+        .all()
+    )
+    return {row[0] for row in rows}
+
+
+def build_connectors(selected_sources: set[str] | None = None):
     settings = get_settings()
-    connectors = [
-        HNConnector(),
-        RSSConnector(feed_urls=RSS_FEEDS),
-        RedditConnector(subreddits=SUBREDDITS),
-    ]
-    if settings.has_twitter and TWITTER_ACCOUNTS:
-        connectors.append(
-            TwitterConnector(
-                bearer_token=settings.twitter_bearer_token,
-                usernames=TWITTER_ACCOUNTS,
+    selected = selected_sources or set(SUPPORTED_SOURCES)
+    connectors = []
+    skipped: dict[str, str] = {}
+
+    if "hn" in selected:
+        connectors.append(HNConnector())
+    if "rss" in selected:
+        connectors.append(RSSConnector(feed_urls=RSS_FEEDS))
+    if "reddit" in selected:
+        connectors.append(RedditConnector(subreddits=SUBREDDITS))
+    if "twitter" in selected:
+        if settings.has_twitter and TWITTER_ACCOUNTS:
+            connectors.append(
+                TwitterConnector(
+                    bearer_token=settings.twitter_bearer_token,
+                    usernames=TWITTER_ACCOUNTS,
+                )
             )
-        )
-    if settings.has_youtube and YOUTUBE_CHANNEL_IDS:
-        connectors.append(
-            YouTubeConnector(
-                api_key=settings.youtube_api_key,
-                channel_ids=YOUTUBE_CHANNEL_IDS,
+        else:
+            skipped["twitter"] = (
+                "TWITTER_BEARER_TOKEN is not configured"
+                if not settings.has_twitter
+                else "TWITTER_ACCOUNTS is empty"
             )
-        )
+    if "youtube" in selected:
+        if settings.has_youtube and YOUTUBE_CHANNEL_IDS:
+            connectors.append(
+                YouTubeConnector(
+                    api_key=settings.youtube_api_key,
+                    channel_ids=YOUTUBE_CHANNEL_IDS,
+                )
+            )
+        else:
+            skipped["youtube"] = (
+                "YOUTUBE_API_KEY is not configured"
+                if not settings.has_youtube
+                else "YOUTUBE_CHANNEL_IDS is empty"
+            )
+
+    return connectors, skipped
+
+
+async def run_ingestion(selected_sources: set[str] | None = None) -> None:
+    connectors, skipped = build_connectors(selected_sources)
+    explicitly_selected = selected_sources is not None
+
+    if skipped:
+        for source, reason in skipped.items():
+            if explicitly_selected:
+                logger.warning("%s requested but skipped: %s", source, reason)
+            else:
+                logger.info("%s not enabled: %s", source, reason)
+
+    if explicitly_selected and not connectors:
+        raise SystemExit("No requested sources could be enabled with the current configuration.")
 
     db = SessionLocal()
     total_new = 0
@@ -117,44 +174,49 @@ async def run_ingestion() -> None:
         for connector in connectors:
             try:
                 items = await connector.fetch()
-                connector_new = 0
+                pending_new = 0
                 connector_duplicates = 0
+                incoming_source_ids = {raw.source_id for raw in items}
+                seen_source_ids = (
+                    existing_source_ids(db, items[0].source, incoming_source_ids)
+                    if items
+                    else set()
+                )
                 for raw in items:
-                    existing = (
-                        db.query(ContentItem)
-                        .filter_by(source=raw.source, source_id=raw.source_id)
-                        .first()
-                    )
-                    if not existing:
-                        if any(is_duplicate(raw.url, raw.title, candidate) for candidate in recent_items):
-                            connector_duplicates += 1
-                            continue
+                    if raw.source_id in seen_source_ids:
+                        connector_duplicates += 1
+                        continue
 
-                        item = ContentItem(
-                            source=raw.source,
-                            source_id=raw.source_id,
-                            url=raw.url,
-                            title=raw.title,
-                            author=raw.author,
-                            body_text=raw.body_text,
-                            published_at=raw.published_at,
-                            content_type=raw.content_type,
-                            metadata_json={
-                                **(raw.metadata or {}),
-                                "canonical_url": canonicalize_url(raw.url),
-                            },
-                        )
-                        db.add(item)
-                        recent_items.insert(0, item)
-                        recent_items = recent_items[:RECENT_DEDUPE_WINDOW]
-                        total_new += 1
-                        connector_new += 1
+                    if any(is_duplicate(raw.url, raw.title, candidate) for candidate in recent_items):
+                        connector_duplicates += 1
+                        continue
+
+                    item = ContentItem(
+                        source=raw.source,
+                        source_id=raw.source_id,
+                        url=raw.url,
+                        title=raw.title,
+                        author=raw.author,
+                        body_text=raw.body_text,
+                        published_at=raw.published_at,
+                        content_type=raw.content_type,
+                        metadata_json={
+                            **(raw.metadata or {}),
+                            "canonical_url": canonicalize_url(raw.url),
+                        },
+                    )
+                    db.add(item)
+                    seen_source_ids.add(raw.source_id)
+                    recent_items.insert(0, item)
+                    recent_items = recent_items[:RECENT_DEDUPE_WINDOW]
+                    pending_new += 1
                 db.commit()
+                total_new += pending_new
                 logger.info(
                     "%s: fetched=%d new=%d duplicates=%d",
                     connector.__class__.__name__,
                     len(items),
-                    connector_new,
+                    pending_new,
                     connector_duplicates,
                 )
             except NotImplementedError:
@@ -169,5 +231,17 @@ async def run_ingestion() -> None:
     logger.info("Ingestion complete — %d new items", total_new)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Fetch source content into the Sift database.")
+    parser.add_argument(
+        "--sources",
+        nargs="+",
+        choices=SUPPORTED_SOURCES,
+        help="Only ingest the specified sources. Defaults to all enabled sources.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    asyncio.run(run_ingestion())
+    args = parse_args()
+    asyncio.run(run_ingestion(set(args.sources) if args.sources else None))

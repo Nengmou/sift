@@ -201,50 +201,33 @@ TWITTER_ACCOUNTS: list[str] = [
 # YouTube channels
 # Used by YouTubeConnector when YOUTUBE_API_KEY is configured.
 # Prefer tutorials, technical talks, and implementation-heavy explainers.
-# Format: YouTube channel ID (UCxxxxxxxx) or a stable handle (@name).
+# Verified ingest list.
 # ---------------------------------------------------------------------------
 
 YOUTUBE_CHANNEL_IDS: list[str] = [
-    "UCPk8m_r6fkUSWebbjWSS8Dw",  # Andrej Karpathy
-    "UCNJ1Ymd5yFuUPtn21xtRbbw",  # Yannic Kilcher
-    "UCbmNph6atAoGfqLoCL_duAg",  # Aleksa Gordić — The AI Epiphany
-    "UCZHmQk67mSJgfCCTn7xBfew",  # Umar Jamil — paper implementations
-    "UCfzlCWGWYyIQ0aLC5w48gBQ",  # Sentdex
-    "UCX7oe66V8zyFpAJyMfPL9VA",  # Jeremy Howard / fast.ai
-    "UCq6XkhO5SZ66N04IcPbqNcw",  # Full Stack Deep Learning
-    "UC_1lhF3hn-ZIRnSzbIiEMdg",  # DataTalks.Club
-    "UCYasrbSOs9bx0X1mNkhHCRQ",  # MLOps Community
-    "UCvmINlrza7JHB1zkIOuXEbw",  # Hugging Face
-    "UCBcRF18a7Qf58cCRy5xuWwQ",  # Weights & Biases
-    "UCnUYZLuoy1rq1aVMwx4aTzw",  # Google DeepMind
-    "UCoh6pEyM-NxQ3fePM4p1biA",  # Stanford HAI
-    "UCV6J_jJa8GJqFwQNgNrMuww",  # PyData
-    "UCTTdSBjXxXCQJR0OoFnMoBA",  # Machine Learning Street Talk
-    "UCzLqOSZPtUKrmSEnlH4LAvw",  # Latent Space
-    "@PracticalAI",             # Applied AI engineering discussions
-    "@AssemblyAI",              # Speech / applied AI tutorials
-    "@HuggingFace",             # Product demos and tutorials
-    "@MLOpsCommunity",          # Practitioner-heavy talks
-    "@deeplearningai",          # Short practical AI explainers and courses
-    "@IBMTechnology",           # Clear technical explainers on AI systems
-    "@YannicKilcher",           # Research deep dives
-    "@AndrejKarpathy",          # LLM / foundation model intuition
-    "UCWX3yGbODI3HLSzg0GR9oNg",  # 3Blue1Brown
-    "UCgBVkKoOAr3ajSdXLDBChvA",  # Sam Witteveen — LLM building
-    "UCyIe-61Y8C4_o-zZCtO4ETQ",  # AI Jason
-    "UCzWQYUVCpZqtN93H8RR44Qw",  # Nicholas Renotte
-    "UCVhQ2NnY5Rskt6UjCUkJ_DA",  # Replicate
-    "@LangChain",               # Agent framework walkthroughs
-    "@LlamaIndex",              # Retrieval and agents walkthroughs
-    "@WeightsBiases",           # Evals / observability / practical ML
-    "@PyDataTV",                # Conference talks and tutorials
-    "@OpenAI",                  # Product and research presentations
-    "@AnthropicAI",             # Claude and agent-oriented content
+    "UCXUPKJO5MZQN11PqgIvyuvQ",  # Andrej Karpathy
+    "UCZHmQk67mSJgfCCTn7xBfew",  # Yannic Kilcher
+    "UCfzlCWGWYyIQ0aLC5w48gBQ",  # sentdex
+    "UCG6qpjVnBTTT8wLGBygANOQ",  # MLOps.community
+    "UCHlNU7kIZhRgSbhHvFoy72w",  # Hugging Face
+    "UCBp3w4DCEC64FZr4k9ROxig",  # Weights & Biases
+    "UCcIXc5mJsHVYTZR1maL5l9w",  # DeepLearningAI
+    "UCGbmaIsLSPMgO9mMaFqvP7g",  # Practical AI
+    "UCKWaEZ-_VweaEx1j62do_vQ",  # IBM Technology
+    "UCtatfZMf-8EkIwASXM4ts0A",  # AssemblyAI
+    "UCC-lyoTfSrcJzA1ab3APAgw",  # LangChain
+    "UCeRjipR4_SsCddq9VZ2AeKg",  # LlamaIndex
+    "UCOjD18EJYcsBog4IozkF_7w",  # PyData
+    "UCXZCJLdBC09xxGZ6gcdrc6A",  # OpenAI
+    "UCrDwWp7EBBv4NwvScIpBDOA",  # Anthropic
     "UCSHZKyawb77ixDdsGog4iWA",  # Lex Fridman
-    "UCKkSHBGBCH-LqMFRPqYBb1A",  # TWIML AI Podcast
-    "UCGq-a57w-aPwyi3pW7XLiHw",  # Cognitive Revolution
-    "@Fireship",                # Fast-moving dev + AI tooling updates
-    "@NetworkChuck",            # Broad dev tooling; useful for power users
-    "@freecodecamp",            # Long-form implementation tutorials
-    "@TheCognitiveRevolutionPodcast",  # Longer-form context and interviews
+    "UC8butISFwT-Wl7EV0hUK0BQ",  # freeCodeCamp.org
+    "UC9x0AN7BWHpCDHSm9NiJFJQ",  # NetworkChuck
+    "UCsBjURrPoezykLs9EqgamOA",  # Fireship
+    "UCKNF1Pm-M-lvJ_LTELoQ4Ig",  # Jing Shi
+    "UC6t1O76G0jYXOAoYCm153dA",  # Lenny's Podcast
+    "UC1UNB6Gy11umcbEj_hqIwhw",  # Little Chinese Everywhere
+    "UC_5lJHgnMP_lb_VpIiXV0hQ",  # 课代表立正
+    "UCQgFQdqiFQ_LfFBGP6z9dqQ",  # Manus AI
+    "UC3Sv1JuKpbOx3csUO8FAo5g",  # Zhang Xiaojun Podcast
 ]
