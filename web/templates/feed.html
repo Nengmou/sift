@@ -12,7 +12,11 @@
         {% if item.author %}· {{ item.author }}{% endif %}
         {% if item.published_at %}· {{ item.published_at.strftime("%b %d") }}{% endif %}
       </p>
-      {% if item.body_text %}
+      {% if item.metadata_json.get("why_this") %}
+      <p style="color:#374151;font-size:0.92rem;margin-top:0.35rem;">
+        <strong>Why this:</strong> {{ item.metadata_json.get("why_this") }}
+      </p>
+      {% elif item.body_text %}
       <p style="color:#4b5563;font-size:0.9rem;margin-top:0.25rem;">
         {{ item.body_text[:200] }}{% if item.body_text|length > 200 %}…{% endif %}
       </p>

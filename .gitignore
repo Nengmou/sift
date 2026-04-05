@@ -12,8 +12,12 @@ __pycache__/
 .env
 .env.local
 
+# Local app database
+sift.db
+sift.db-shm
+sift.db-wal
+
 # Ignore all PDF and doc files
 *.pdf
 *.doc
 *.docx
-

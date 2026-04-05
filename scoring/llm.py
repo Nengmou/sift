@@ -7,6 +7,7 @@ Scores each item on three dimensions (0.0–1.0):
 """
 import json
 import logging
+import re
 
 import httpx
 
@@ -31,7 +32,7 @@ Score the following content on three dimensions, each as a float between 0.0 and
    1 = calm, constructive, informative without stress.
 
 Respond with ONLY valid JSON — no markdown, no explanation:
-{{"quality": float, "authenticity": float, "anxiety": float}}
+{{"quality": float, "authenticity": float, "anxiety": float, "why_this": "1-2 sentence user-facing summary"}}
 
 Content to evaluate:
 Source: {source}
@@ -51,6 +52,14 @@ _ANXIETY_SIGNALS = [
 _AUTHENTIC_SIGNALS = ["i built", "we built", "in production", "we shipped", "my experience"]
 
 
+def _build_summary(item: RawItem) -> str:
+    source_text = item.body_text or item.title or "Useful new content from your tracked sources."
+    summary = re.sub(r"\s+", " ", source_text).strip()
+    if not summary:
+        summary = "Useful new content from your tracked sources."
+    return summary[:220]
+
+
 def _fallback_scores(item: RawItem) -> dict[str, float]:
     """Heuristic scoring when OpenRouter is unavailable."""
     text = f"{item.title or ''} {item.body_text or ''}".lower()
@@ -65,13 +74,14 @@ def _fallback_scores(item: RawItem) -> dict[str, float]:
         "quality_score": float(max(0.0, min(1.0, quality))),
         "authenticity_score": float(max(0.0, min(1.0, authenticity))),
         "anxiety_score": float(max(0.0, min(1.0, anxiety))),
+        "why_this": _build_summary(item),
     }
 
 
 async def score_item(item: RawItem) -> dict[str, float]:
     """
     Score a RawItem. Falls back to heuristics if no OpenRouter key is set.
-    Returns: {"quality_score": float, "authenticity_score": float, "anxiety_score": float}
+    Returns: {"quality_score": float, "authenticity_score": float, "anxiety_score": float, "why_this": str}
     """
     if not settings.has_openrouter:
         logger.debug("No OpenRouter key — using fallback scores for %s", item.source_id)
@@ -106,6 +116,7 @@ async def score_item(item: RawItem) -> dict[str, float]:
             "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
             "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),
             "anxiety_score": float(max(0.0, min(1.0, parsed["anxiety"]))),
+            "why_this": str(parsed.get("why_this") or _build_summary(item)),
         }
     except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:
         logger.warning("LLM scoring failed for %s: %s — using fallback", item.source_id, e)
