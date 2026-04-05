@@ -1,0 +1,57 @@
+[project]
+name = "sift"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    # Web framework
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+
+    # Templating
+    "jinja2>=3.1.4",
+    "python-multipart>=0.0.9",
+
+    # Database
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13.1",
+    "psycopg[binary]>=3.1.19",
+
+    # Config
+    "pydantic-settings>=2.2.1",
+    "pydantic[email]>=2.7.0",
+
+    # HTTP client
+    "httpx>=0.27.0",
+
+    # Email
+    "resend>=2.0.0",
+
+    # Feed parsing (RSS)
+    "feedparser>=6.0.11",
+
+    # Auth tokens
+    "itsdangerous>=2.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.4",
+    "mypy>=1.10.0",
+    "ipython>=8.24.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]

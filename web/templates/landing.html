@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Sift — Authentic Content Discovery{% endblock %}
+{% block content %}
+<main>
+  <h1>Sift</h1>
+  <p style="margin-bottom: 1.5rem; color: #4b5563;">Less noise. More substance. Zero anxiety.</p>
+  <form action="/api/signup" method="post">
+    <input type="email" name="email" placeholder="your@email.com" required />
+    <button type="submit">Get your daily briefing</button>
+  </form>
+</main>
+{% endblock %}

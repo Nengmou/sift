@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Your Feed — Sift{% endblock %}
+{% block content %}
+<main>
+  <h1>Good morning, {{ user.name or user.email }}</h1>
+  {% if items %}
+    {% for item in items %}
+    <article>
+      <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+      <p class="meta">{{ item.source }} {% if item.author %}· {{ item.author }}{% endif %} {% if item.published_at %}· {{ item.published_at.strftime("%b %d") }}{% endif %}</p>
+    </article>
+    {% endfor %}
+  {% else %}
+    <p style="color: #6b7280; margin-top: 2rem;">Your feed is being prepared. Check back soon.</p>
+  {% endif %}
+</main>
+{% endblock %}

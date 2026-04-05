@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Your Sift digest</title>
+</head>
+<body style="font-family: system-ui, sans-serif; max-width: 600px; margin: auto; padding: 24px; color: #1a1a1a;">
+  <h1 style="font-size: 1.4rem; margin-bottom: 0.25rem;">Your Sift digest</h1>
+  <p style="color: #6b7280; font-size: 0.875rem; margin-bottom: 2rem;">
+    Hi {{ user.name or user.email }} — here's what's worth your attention today.
+  </p>
+
+  {% for item in items %}
+  <div style="border-bottom: 1px solid #e5e7eb; padding: 16px 0;">
+    <a href="{{ item.url }}"
+       style="font-size: 1rem; font-weight: 600; color: #1d4ed8; text-decoration: none;">
+      {{ item.title or "(no title)" }}
+    </a>
+    <p style="color: #6b7280; font-size: 0.8rem; margin: 4px 0;">
+      {{ item.source }}{% if item.author %} · {{ item.author }}{% endif %}
+    </p>
+    {% if item.body_text %}
+    <p style="margin-top: 8px; color: #374151; font-size: 0.9rem;">
+      {{ item.body_text[:200] }}{% if item.body_text|length > 200 %}…{% endif %}
+    </p>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <p style="margin-top: 32px; font-size: 0.75rem; color: #9ca3af;">
+    You're receiving this because you signed up at
+    <a href="{{ app_url }}" style="color: #6b7280;">{{ app_url }}</a>.
+    <a href="{{ app_url }}/unsubscribe" style="color: #6b7280;">Unsubscribe</a>
+  </p>
+</body>
+</html>
