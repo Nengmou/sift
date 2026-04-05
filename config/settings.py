@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     email_from: str = "Sift <hello@usesift.app>"
     dry_run_email: bool = True
 
+    # Source APIs — optional; connectors stay disabled when absent
+    twitter_bearer_token: str = ""
+    youtube_api_key: str = ""
+
     # Magic link TTL in minutes
     magic_link_ttl_minutes: int = 15
 
@@ -53,6 +57,14 @@ class Settings(BaseSettings):
     @property
     def has_resend(self) -> bool:
         return bool(self.resend_api_key.strip()) and not self.dry_run_email
+
+    @property
+    def has_twitter(self) -> bool:
+        return bool(self.twitter_bearer_token.strip())
+
+    @property
+    def has_youtube(self) -> bool:
+        return bool(self.youtube_api_key.strip())
 
 
 @lru_cache

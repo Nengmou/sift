@@ -3,27 +3,48 @@ Twitter/X connector stub — requires X API v2 Bearer token.
 Add TWITTER_BEARER_TOKEN to .env when ready to enable.
 """
 import datetime
+from itertools import islice
 
 import httpx
 
 from ingestion.base import BaseConnector, RawItem
 
 BASE_URL = "https://api.twitter.com/2"
+MAX_USERNAMES_PER_QUERY = 20
 
 
 class TwitterConnector(BaseConnector):
-    def __init__(self, bearer_token: str):
+    def __init__(self, bearer_token: str, usernames: list[str] | None = None):
         self.bearer_token = bearer_token
+        self.usernames = [username.lstrip("@") for username in (usernames or [])]
 
     async def fetch(self, query: str = "", max_results: int = 20) -> list[RawItem]:
         """
-        Search recent tweets. Requires a curated query string, e.g.:
-        "(from:karpathy OR from:simonw) -is:retweet lang:en"
-        TODO: implement X API v2 /tweets/search/recent call.
+        Search recent tweets from configured accounts.
+        Falls back to a caller-supplied query if usernames are not configured.
         """
-        raise NotImplementedError(
-            "Twitter connector not yet implemented. "
-            "Add TWITTER_BEARER_TOKEN to .env and implement _search_recent."
+        queries = []
+        if self.usernames:
+            for username_batch in _batched(self.usernames, MAX_USERNAMES_PER_QUERY):
+                account_clause = " OR ".join(f"from:{username}" for username in username_batch)
+                queries.append(f"({account_clause}) -is:retweet -is:reply lang:en")
+        elif query:
+            queries.append(query)
+        else:
+            return []
+
+        items_by_id: dict[str, RawItem] = {}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for search_query in queries:
+                for item in await self._search_recent(client, search_query, max_results):
+                    items_by_id[item.source_id] = item
+
+        return sorted(
+            items_by_id.values(),
+            key=lambda item: item.published_at or datetime.datetime.min.replace(
+                tzinfo=datetime.timezone.utc
+            ),
+            reverse=True,
         )
 
     async def _search_recent(
@@ -65,3 +86,9 @@ class TwitterConnector(BaseConnector):
                 metadata={"public_metrics": tweet.get("public_metrics", {})},
             ))
         return items
+
+
+def _batched(items: list[str], size: int):
+    iterator = iter(items)
+    while batch := list(islice(iterator, size)):
+        yield batch

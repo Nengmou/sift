@@ -78,20 +78,25 @@ SUBREDDITS: list[str] = [
     "MachineLearning",          # Research papers, implementation discussion
     "LocalLLaMA",               # Open model usage, benchmarks, hands-on
     "ExperiencedDevs",          # Senior engineer perspective on AI tooling
+    "OpenAI",                   # API / product usage patterns
     "ClaudeAI",                 # Power user workflows, prompting patterns
-    "ChatGPT",                  # Real usage patterns (filter for practitioner posts)
-    "LanguageModelEvaluation",  # Evals, benchmarks, methodology
+    "ClaudeCode",               # AI coding workflows
+    "cursor",                   # AI IDE workflows
+    "ChatGPTCoding",            # Coding-specific prompting and usage
+    "ChatGPT",                  # Broad user patterns; keep ranked cautiously
     "mlops",                    # Production ML, deployment, monitoring
+    "dataengineering",          # Pipelines, infra, data systems
+    "devops",                   # Platform and deployment workflows
     "learnmachinelearning",     # Tutorials, practitioner bridge
     "deeplearning",             # Architecture discussions
     "LLMDevs",                  # App builders, LLM integrations
     "PromptEngineering",        # Technique sharing, real examples
-    "StableDiffusion",          # Image AI — practitioner-heavy community
     "datascience",              # Applied ML in industry
-    "AIAssistants",             # Power user workflows
     "Python",                   # Python ecosystem, AI library releases
-    "artificial",               # General AI — breadth
-    "singularity",              # High-signal links (filter speculation)
+    "programming",              # Broad engineering discourse and tooling launches
+    "webdev",                   # Frontend + AI-tooling workflows
+    "artificial",               # Broad AI discussion; rank conservatively
+    "selfhosted",               # Local tooling and self-hosted model workflows
     "opensource",               # Open source AI project launches
 ]
 
@@ -99,119 +104,147 @@ SUBREDDITS: list[str] = [
 # Twitter/X accounts
 # Used by TwitterConnector when TWITTER_BEARER_TOKEN is configured.
 # Format: username only (no @)
+# Prefer builders, infra maintainers, evaluators, and technical educators.
 # ---------------------------------------------------------------------------
 
 TWITTER_ACCOUNTS: list[str] = [
-    # Core practitioners — builders
-    "simonw",           # Simon Willison — most prolific LLM builder
-    "karpathy",         # Andrej Karpathy
-    "eugeneyan",        # Eugene Yan
-    "chiphuyen",        # Chip Huyen
-    "rasbt",            # Sebastian Raschka
-    "HamelHusain",      # Hamel Husain
-    "vboykis",          # Vicki Boykis
-    "fchollet",         # Francois Chollet
-    "jeremyphoward",    # Jeremy Howard
-    "thom_wolf",        # Thomas Wolf (HF)
-    "osanseviero",      # Omar Sanseviero (HF)
-    "joao_gante",       # HF transformers core
-    "_philschmid",      # Philipp Schmid (HF)
-    "ggerganov",        # Georgi Gerganov (llama.cpp)
-    "jxnlco",           # Jason Liu (Instructor)
-    "hwchase17",        # Harrison Chase (LangChain)
-    "jerryjliu0",       # Jerry Liu (LlamaIndex)
-    "swyx",             # AI engineer community builder
-    "mckaywrigley",     # Builder, open source
-    "danielhanchen",    # Fine-tuning practitioner
-    "reach_vb",         # Vaibhav Srivastav (HF)
-    "mattshumer_",      # AI product builder
-    "GregKamradt",      # LLM use cases
-    "rohanpaul_ai",     # Applied ML practitioner
-    "svpino",           # Santiago Valdarrama — applied ML
-    "skalskip92",       # Computer vision practitioner
-    "marktenenholtz",   # ML practitioner
-
-    # Researchers — honest, technical
-    "ylecun",           # Yann LeCun — skeptical counterpoint
-    "ilyasut",          # Ilya Sutskever
-    "DrJimFan",         # NVIDIA researcher
-    "kchonyc",          # Kyunghyun Cho
-    "hardmaru",         # David Ha
-    "natolambert",      # Nathan Lambert — RLHF, alignment
-    "_jasonwei",        # Jason Wei — chain-of-thought
-    "cwolferesearch",   # Chelsea Voss
-    "ykilcher",         # Yannic Kilcher
-    "random_walker",    # Arvind Narayanan — skeptical/critical
-    "emollick",         # Ethan Mollick
-    "GaryMarcus",       # Critical perspective on AI claims
-    "burkov",           # Andriy Burkov
-    "NathanLambert",    # Alignment, RLHF
-
-    # MLOps / production ML
-    "shreya_shankar",   # ML production, data quality
-    "mihail_eric",      # LLM evals, quality
-    "josephmisiti",     # ML infrastructure
-
-    # AI power users & indie builders
-    "tunguz",           # Bojan Tunguz — Kaggle grandmaster
-    "willkurt",         # Will Kurt — probabilistic reasoning
-    "AravSrinivas",     # Perplexity CEO
-    "dottxtai",         # Structured generation
-    "tim_dettmers",     # Quantization, efficient training
-
-    # Open source / infra
-    "lmsysorg",         # LM Systems — benchmarks, Chatbot Arena
-    "alexalbert__",     # Anthropic — Claude updates
-
-    # Curators / communities
-    "latentspacepod",   # Latent Space podcast
-    "weights_biases",   # W&B
-    "huggingface",      # HF announcements
-    "LangChainAI",      # LangChain
-    "llama_index",      # LlamaIndex
-
-    # Research labs (for releases, not PR)
-    "GoogleDeepMind",
-    "AIatMeta",
-    "MistralAI",
+    "simonw",
+    "karpathy",
+    "eugeneyan",
+    "chiphuyen",
+    "rasbt",
+    "HamelHusain",
+    "vboykis",
+    "jeremyphoward",
+    "thom_wolf",
+    "osanseviero",
+    "joao_gante",
+    "_philschmid",
+    "ggerganov",
+    "jxnlco",
+    "hwchase17",
+    "jerryjliu0",
+    "goodside",
+    "teortaxesTex",
+    "abacaj",
+    "nrehiew_",
+    "shreya_shankar",
+    "huyenchip",
+    "mihail_eric",
+    "humanloop",
+    "langfuse",
+    "basetenlabs",
+    "modal_labs",
+    "anyscalecompute",
+    "togethercompute",
+    "replicate",
+    "weights_biases",
+    "vllm_project",
+    "sglangai",
+    "OpenAIDevs",
+    "ollama",
+    "lmsysorg",
+    "huggingface",
+    "OpenAI",
     "AnthropicAI",
+    "GoogleDeepMind",
+    "MistralAI",
+    "LangChainAI",
+    "llama_index",
+    "ClementDelangue",
+    "AlexAlbert__",     # Anthropic developer relations / release details
+    "shanselman",
+    "addyosmani",
+    "leeerob",
+    "steipete",
+    "theo",
+    "fchollet",
+    "swyx",
+    "mckaywrigley",
+    "danielhanchen",
+    "reach_vb",
+    "mattshumer_",
+    "GregKamradt",
+    "rohanpaul_ai",
+    "svpino",
+    "DrJimFan",
+    "hardmaru",
+    "natolambert",
+    "_jasonwei",
+    "ykilcher",
+    "emollick",
+    "burkov",
+    "tim_dettmers",
+    "elvis_saravia",
+    "LatentSpacePod",
+    "cohere",
+    "groqinc",
+    "perplexity_ai",
+    "dottxtai",
+    "rowancheung",
+    "TheTuringPost",
+    "AravSrinivas",
+    "AndrewYNg",
+    "sama",
+    "Fireship_dev",
+    "levelsio",
+    "danshipper",
+    "LennyRachitsky",
+    "packym",
+    "every",
+    "fortelabs",
+    "NatEliason",
+    "heynikihey",
 ]
 
 # ---------------------------------------------------------------------------
-# YouTube channel IDs
+# YouTube channels
 # Used by YouTubeConnector when YOUTUBE_API_KEY is configured.
-# Format: YouTube channel ID (UCxxxxxxxx)
+# Prefer tutorials, technical talks, and implementation-heavy explainers.
+# Format: YouTube channel ID (UCxxxxxxxx) or a stable handle (@name).
 # ---------------------------------------------------------------------------
 
 YOUTUBE_CHANNEL_IDS: list[str] = [
-    # Deep technical — highest priority
     "UCPk8m_r6fkUSWebbjWSS8Dw",  # Andrej Karpathy
     "UCNJ1Ymd5yFuUPtn21xtRbbw",  # Yannic Kilcher
     "UCbmNph6atAoGfqLoCL_duAg",  # Aleksa Gordić — The AI Epiphany
     "UCZHmQk67mSJgfCCTn7xBfew",  # Umar Jamil — paper implementations
-    "UCWX3yGbODI3HLSzg0GR9oNg",  # 3Blue1Brown
     "UCfzlCWGWYyIQ0aLC5w48gBQ",  # Sentdex
-    "UCSHZKyawb77ixDdsGog4iWA",  # Lex Fridman
-
-    # Practitioner / builder focus
-    "UCgBVkKoOAr3ajSdXLDBChvA",  # Sam Witteveen — LLM building
-    "UCyIe-61Y8C4_o-zZCtO4ETQ",  # AI Jason
-    "UCzWQYUVCpZqtN93H8RR44Qw",  # Nicholas Renotte
-    "UCtatfZMf-8EkIwASXM4ts0A",  # AssemblyAI
-    "UCBcRF18a7Qf58cCRy5xuWwQ",  # Weights & Biases
-    "UCvmINlrza7JHB1zkIOuXEbw",  # Hugging Face
     "UCX7oe66V8zyFpAJyMfPL9VA",  # Jeremy Howard / fast.ai
     "UCq6XkhO5SZ66N04IcPbqNcw",  # Full Stack Deep Learning
     "UC_1lhF3hn-ZIRnSzbIiEMdg",  # DataTalks.Club
     "UCYasrbSOs9bx0X1mNkhHCRQ",  # MLOps Community
-
-    # Conference / talks
+    "UCvmINlrza7JHB1zkIOuXEbw",  # Hugging Face
+    "UCBcRF18a7Qf58cCRy5xuWwQ",  # Weights & Biases
     "UCnUYZLuoy1rq1aVMwx4aTzw",  # Google DeepMind
     "UCoh6pEyM-NxQ3fePM4p1biA",  # Stanford HAI
-
-    # Podcast-style
+    "UCV6J_jJa8GJqFwQNgNrMuww",  # PyData
     "UCTTdSBjXxXCQJR0OoFnMoBA",  # Machine Learning Street Talk
     "UCzLqOSZPtUKrmSEnlH4LAvw",  # Latent Space
+    "@PracticalAI",             # Applied AI engineering discussions
+    "@AssemblyAI",              # Speech / applied AI tutorials
+    "@HuggingFace",             # Product demos and tutorials
+    "@MLOpsCommunity",          # Practitioner-heavy talks
+    "@deeplearningai",          # Short practical AI explainers and courses
+    "@IBMTechnology",           # Clear technical explainers on AI systems
+    "@YannicKilcher",           # Research deep dives
+    "@AndrejKarpathy",          # LLM / foundation model intuition
+    "UCWX3yGbODI3HLSzg0GR9oNg",  # 3Blue1Brown
+    "UCgBVkKoOAr3ajSdXLDBChvA",  # Sam Witteveen — LLM building
+    "UCyIe-61Y8C4_o-zZCtO4ETQ",  # AI Jason
+    "UCzWQYUVCpZqtN93H8RR44Qw",  # Nicholas Renotte
+    "UCVhQ2NnY5Rskt6UjCUkJ_DA",  # Replicate
+    "@LangChain",               # Agent framework walkthroughs
+    "@LlamaIndex",              # Retrieval and agents walkthroughs
+    "@WeightsBiases",           # Evals / observability / practical ML
+    "@PyDataTV",                # Conference talks and tutorials
+    "@OpenAI",                  # Product and research presentations
+    "@AnthropicAI",             # Claude and agent-oriented content
+    "UCSHZKyawb77ixDdsGog4iWA",  # Lex Fridman
     "UCKkSHBGBCH-LqMFRPqYBb1A",  # TWIML AI Podcast
     "UCGq-a57w-aPwyi3pW7XLiHw",  # Cognitive Revolution
+    "@Fireship",                # Fast-moving dev + AI tooling updates
+    "@NetworkChuck",            # Broad dev tooling; useful for power users
+    "@freecodecamp",            # Long-form implementation tutorials
+    "@TheCognitiveRevolutionPodcast",  # Longer-form context and interviews
 ]

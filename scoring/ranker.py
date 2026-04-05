@@ -2,6 +2,10 @@
 from db.models import ContentItem, User
 
 
+def _available_source_count(items: list[ContentItem]) -> int:
+    return len({item.source for item in items})
+
+
 def _interest_overlap_score(item: ContentItem, user: User) -> float:
     interests = [interest.lower() for interest in user.interests]
     if not interests:
@@ -39,7 +43,9 @@ def compute_rank(item: ContentItem, user: User) -> float:
     a = item.authenticity_score or 0.0
     z = item.anxiety_score or 0.0
     r = _interest_overlap_score(item, user)
-    return round(q * 0.35 + a * 0.25 + z * 0.2 + r * 0.2, 4)
+    if user.interests and r == 0.0:
+        return round(q * 0.25 + a * 0.2 + z * 0.15, 4)
+    return round(q * 0.3 + a * 0.2 + z * 0.15 + r * 0.35, 4)
 
 
 def rank_items_for_user(
@@ -52,7 +58,21 @@ def rank_items_for_user(
     Return items sorted by composite rank, with source diversity enforced.
     At most `max_per_source` items from the same source in the final list.
     """
-    sorted_items = sorted(items, key=lambda i: compute_rank(i, user), reverse=True)
+    available_sources = _available_source_count(items)
+    effective_max_per_source = max_per_source
+    if available_sources <= 1:
+        effective_max_per_source = 20
+    elif available_sources == 2:
+        effective_max_per_source = max(max_per_source, 10)
+
+    min_relevance = 0.1 if user.interests else 0.0
+    filtered_items = [
+        item for item in items
+        if _interest_overlap_score(item, user) >= min_relevance
+    ]
+    candidate_items = filtered_items or items
+
+    sorted_items = sorted(candidate_items, key=lambda i: compute_rank(i, user), reverse=True)
 
     source_counts: dict[str, int] = {}
     content_type_counts: dict[str, int] = {}
@@ -61,7 +81,7 @@ def rank_items_for_user(
         source_count = source_counts.get(item.source, 0)
         content_type = item.content_type or "unknown"
         type_count = content_type_counts.get(content_type, 0)
-        if source_count < max_per_source and type_count < max_per_content_type:
+        if source_count < effective_max_per_source and type_count < max_per_content_type:
             ranked.append(item)
             source_counts[item.source] = source_count + 1
             content_type_counts[content_type] = type_count + 1

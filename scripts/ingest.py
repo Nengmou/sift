@@ -8,12 +8,15 @@ import logging
 from difflib import SequenceMatcher
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from config.sources import RSS_FEEDS, SUBREDDITS
+from config.settings import get_settings
+from config.sources import RSS_FEEDS, SUBREDDITS, TWITTER_ACCOUNTS, YOUTUBE_CHANNEL_IDS
 from db.models import ContentItem
 from db.session import SessionLocal
 from ingestion.hn import HNConnector
 from ingestion.rss import RSSConnector
 from ingestion.reddit import RedditConnector
+from ingestion.twitter import TwitterConnector
+from ingestion.youtube import YouTubeConnector
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -85,12 +88,26 @@ def load_recent_items(db: SessionLocal) -> list[ContentItem]:
 
 
 async def run_ingestion() -> None:
+    settings = get_settings()
     connectors = [
         HNConnector(),
         RSSConnector(feed_urls=RSS_FEEDS),
         RedditConnector(subreddits=SUBREDDITS),
-        # TwitterConnector and YouTubeConnector added when API keys are ready
     ]
+    if settings.has_twitter and TWITTER_ACCOUNTS:
+        connectors.append(
+            TwitterConnector(
+                bearer_token=settings.twitter_bearer_token,
+                usernames=TWITTER_ACCOUNTS,
+            )
+        )
+    if settings.has_youtube and YOUTUBE_CHANNEL_IDS:
+        connectors.append(
+            YouTubeConnector(
+                api_key=settings.youtube_api_key,
+                channel_ids=YOUTUBE_CHANNEL_IDS,
+            )
+        )
 
     db = SessionLocal()
     total_new = 0

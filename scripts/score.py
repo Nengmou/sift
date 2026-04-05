@@ -23,6 +23,7 @@ async def run_scoring() -> None:
         unscored = (
             db.query(ContentItem)
             .filter(ContentItem.quality_score.is_(None))
+            .order_by(ContentItem.published_at.desc().nullslast(), ContentItem.ingested_at.desc())
             .limit(BATCH_SIZE)
             .all()
         )
