@@ -4,10 +4,26 @@
 <main>
   <h2>Settings</h2>
   <form method="post" action="/settings" style="margin-top: 1rem;">
-    <label for="delivery_time">Daily briefing time (UTC)
-      <input type="time" id="delivery_time" name="delivery_time" value="{{ user.delivery_time or '08:00' }}" />
+
+    <label for="delivery_time" style="display:block;margin-bottom:0.5rem;font-weight:600;">
+      Daily briefing time (UTC)
     </label>
-    <button type="submit">Save</button>
+    <input type="time" id="delivery_time" name="delivery_time"
+           value="{{ user.delivery_time or '08:00' }}"
+           style="margin-bottom:1.5rem;" />
+
+    <p style="font-weight:600;margin-bottom:0.5rem;">Interests</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.5rem;margin-bottom:1.5rem;">
+      {% for topic in topic_cards %}
+      <label style="display:flex;gap:0.5rem;align-items:center;cursor:pointer;">
+        <input type="checkbox" name="interests" value="{{ topic }}"
+               {% if topic in user.interests %}checked{% endif %} />
+        <span>{{ topic }}</span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <button type="submit">Save settings</button>
   </form>
 </main>
 {% endblock %}

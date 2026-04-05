@@ -6,6 +6,7 @@ Railway: schedule every 2–4 hours.
 import asyncio
 import logging
 
+from config.sources import RSS_FEEDS, SUBREDDITS
 from db.models import ContentItem
 from db.session import SessionLocal
 from ingestion.hn import HNConnector
@@ -14,25 +15,6 @@ from ingestion.reddit import RedditConnector
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Configure your curated source lists here
-# ---------------------------------------------------------------------------
-
-RSS_FEEDS: list[str] = [
-    # Add 50-100 curated RSS/Substack feeds here
-    # e.g. "https://simonwillison.net/atom/everything/",
-]
-
-SUBREDDITS: list[str] = [
-    "MachineLearning",
-    "LocalLLaMA",
-    "ExperiencedDevs",
-    "ChatGPT",
-    "ClaudeAI",
-    "LanguageModelEvaluation",
-    # Add more curated subreddits
-]
 
 
 async def run_ingestion() -> None:
@@ -65,7 +47,7 @@ async def run_ingestion() -> None:
                             body_text=raw.body_text,
                             published_at=raw.published_at,
                             content_type=raw.content_type,
-                            metadata=raw.metadata or {},
+                            metadata_json=raw.metadata or {},
                         ))
                         total_new += 1
                 db.commit()

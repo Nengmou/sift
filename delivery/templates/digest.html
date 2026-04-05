@@ -30,7 +30,8 @@
   <p style="margin-top: 32px; font-size: 0.75rem; color: #9ca3af;">
     You're receiving this because you signed up at
     <a href="{{ app_url }}" style="color: #6b7280;">{{ app_url }}</a>.
-    <a href="{{ app_url }}/unsubscribe" style="color: #6b7280;">Unsubscribe</a>
+    &nbsp;·&nbsp;
+    <a href="{{ app_url }}/unsubscribe?email={{ user.email }}" style="color: #6b7280;">Unsubscribe</a>
   </p>
 </body>
 </html>

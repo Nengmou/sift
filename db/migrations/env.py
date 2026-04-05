@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from config.settings import get_settings
 from db.base import Base
 import db.models  # noqa: F401 — ensures all models are registered
 
@@ -12,7 +13,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+# Use DATABASE_URL env var if set, otherwise fall back to settings (reads .env)
+settings = get_settings()
+db_url = os.environ.get("DATABASE_URL", settings.database_url)
+config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 

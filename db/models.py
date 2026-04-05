@@ -8,11 +8,11 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    JSON,
     String,
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
@@ -57,8 +57,8 @@ class User(Base):
         Index("ix_users_magic_link_token", "magic_link_token"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -96,8 +96,8 @@ class ContentItem(Base):
         Index("ix_content_items_ingested_at", "ingested_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     source: Mapped[str] = mapped_column(SourceEnum, nullable=False)
     source_id: Mapped[str] = mapped_column(String(512), nullable=False)
@@ -112,7 +112,7 @@ class ContentItem(Base):
     authenticity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     anxiety_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     content_type: Mapped[str | None] = mapped_column(ContentTypeEnum, nullable=True)
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, nullable=False, default=dict)
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
@@ -135,16 +135,16 @@ class Interaction(Base):
         Index("ix_interactions_user_content", "user_id", "content_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    user_id: Mapped[str] = mapped_column(
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    content_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    content_id: Mapped[str] = mapped_column(
+        String(36),
         ForeignKey("content_items.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -172,11 +172,11 @@ class UserSession(Base):
         Index("ix_sessions_expires_at", "expires_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    user_id: Mapped[str] = mapped_column(
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )

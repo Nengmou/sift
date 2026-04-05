@@ -39,44 +39,74 @@ Title: {title}
 Body (first 500 chars): {body}
 """
 
+# Heuristic fallback used when no OpenRouter key is configured
+_POSITIVE_SIGNALS = [
+    "tutorial", "benchmark", "guide", "walkthrough", "lessons learned",
+    "postmortem", "evaluation", "case study", "implementation", "how i",
+]
+_ANXIETY_SIGNALS = [
+    "you are falling behind", "doom", "outrage", "must use now",
+    "urgent", "panic", "threat", "replace everyone", "AI will replace",
+]
+_AUTHENTIC_SIGNALS = ["i built", "we built", "in production", "we shipped", "my experience"]
+
+
+def _fallback_scores(item: RawItem) -> dict[str, float]:
+    """Heuristic scoring when OpenRouter is unavailable."""
+    text = f"{item.title or ''} {item.body_text or ''}".lower()
+    quality = 0.55 + 0.06 * sum(1 for s in _POSITIVE_SIGNALS if s in text)
+    authenticity = 0.5 + 0.10 * sum(1 for s in _AUTHENTIC_SIGNALS if s in text)
+    anxiety = 0.7 - 0.12 * sum(1 for s in _ANXIETY_SIGNALS if s in text)
+    if item.source == "rss":
+        authenticity += 0.05
+    if item.source == "hn":
+        quality += 0.05
+    return {
+        "quality_score": float(max(0.0, min(1.0, quality))),
+        "authenticity_score": float(max(0.0, min(1.0, authenticity))),
+        "anxiety_score": float(max(0.0, min(1.0, anxiety))),
+    }
+
 
 async def score_item(item: RawItem) -> dict[str, float]:
     """
-    Call OpenRouter to score a single RawItem.
+    Score a RawItem. Falls back to heuristics if no OpenRouter key is set.
     Returns: {"quality_score": float, "authenticity_score": float, "anxiety_score": float}
     """
+    if not settings.has_openrouter:
+        logger.debug("No OpenRouter key — using fallback scores for %s", item.source_id)
+        return _fallback_scores(item)
+
     prompt = SCORE_PROMPT.format(
         source=item.source,
         title=item.title or "(no title)",
         body=(item.body_text or "")[:500],
     )
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{settings.openrouter_base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.openrouter_api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": settings.openrouter_model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.1,
-                "max_tokens": 100,
-            },
-        )
-        resp.raise_for_status()
-
-    content = resp.json()["choices"][0]["message"]["content"].strip()
-
     try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{settings.openrouter_base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.openrouter_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                    "max_tokens": 100,
+                },
+            )
+            resp.raise_for_status()
+
+        content = resp.json()["choices"][0]["message"]["content"].strip()
         parsed = json.loads(content)
         return {
             "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
             "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),
             "anxiety_score": float(max(0.0, min(1.0, parsed["anxiety"]))),
         }
-    except (json.JSONDecodeError, KeyError, TypeError) as e:
-        logger.warning("Failed to parse LLM score response for %s: %s | raw: %s",
-                       item.source_id, e, content)
-        return {"quality_score": 0.5, "authenticity_score": 0.5, "anxiety_score": 0.5}
+    except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.warning("LLM scoring failed for %s: %s — using fallback", item.source_id, e)
+        return _fallback_scores(item)
