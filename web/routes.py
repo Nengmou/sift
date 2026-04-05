@@ -23,7 +23,7 @@ TOPIC_CARDS = [
 @router.get("/", response_class=HTMLResponse)
 def landing(request: Request):
     return templates.TemplateResponse(
-        "landing.html", {"request": request, "topic_cards": TOPIC_CARDS}
+        request, "landing.html", {"request": request, "topic_cards": TOPIC_CARDS}
     )
 
 
@@ -46,14 +46,14 @@ def feed(
     )
     ranked = rank_items_for_user(items, user)
     return templates.TemplateResponse(
-        "feed.html", {"request": request, "user": user, "items": ranked[:20]}
+        request, "feed.html", {"request": request, "user": user, "items": ranked[:20]}
     )
 
 
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request, user: User = Depends(get_current_user)):
     return templates.TemplateResponse(
-        "settings.html", {"request": request, "user": user, "topic_cards": TOPIC_CARDS}
+        request, "settings.html", {"request": request, "user": user, "topic_cards": TOPIC_CARDS}
     )
 
 
