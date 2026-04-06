@@ -21,3 +21,6 @@ Operational note:
 - `migrate` is a one-shot service and is expected to exit after finishing successfully.
 - `/livez` is liveness-only for Railway health checks.
 - `/healthz` verifies database readiness.
+
+Launch readiness checklist:
+- [docs/launch-checklist.md](/Users/nengmou/Projects/sift/docs/launch-checklist.md)

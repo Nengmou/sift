@@ -63,6 +63,16 @@ present (`settings.has_twitter`, `settings.has_youtube`). HN, RSS, and Reddit re
 keys. LLM scoring falls back to keyword heuristics when `OPENROUTER_API_KEY` is absent —
 the app is fully functional without any paid API keys.
 
+### Reddit uses httpx, not PRAW
+`ingestion/reddit.py` calls the public JSON API directly (`https://www.reddit.com/r/{sub}/hot.json`).
+PRAW is not a dependency — don't add it.
+
+### YouTube fetches metadata only (no transcripts)
+`ingestion/youtube.py` fetches video title and description via the Data API v3. Full transcript
+ingestion (originally planned via yt-dlp) is not implemented. As a result, video content is
+scored on description text only, which underrepresents depth. This is a known gap — if scoring
+quality for YouTube videos needs improvement, transcript extraction is the lever.
+
 ### Deduplication
 `scripts/ingest.py` deduplicates against the most recent 500 items using:
 1. URL canonicalization (strips UTM and tracking params, sorts remaining query params)
@@ -96,6 +106,13 @@ Diversity caps enforce max 3 items per platform and max 2 per publisher in the f
 All curated lists live in `config/sources.py` — edit there to add/remove sources without
 touching ingestion logic. All YouTube entries should be `UC…` channel IDs (not `@handles`)
 to avoid expensive Search API quota usage.
+
+## Current milestone
+
+All MVP features are code-complete. Outstanding before beta launch:
+- Deploy to Railway and verify the pipeline runs against a live Postgres DB
+- Manual ingest run → confirm content flows into DB → send a test digest email
+- Onboard 20–50 beta users
 
 ## Alembic
 
