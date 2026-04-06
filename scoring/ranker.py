@@ -2,6 +2,7 @@
 import re
 from urllib.parse import urlsplit
 
+from config.sources import TAG_TO_INTEREST
 from db.models import ContentItem, User
 
 
@@ -51,7 +52,8 @@ def _tokenize_interest(text: str) -> set[str]:
     return normalized
 
 
-def _interest_overlap_score(item: ContentItem, user: User) -> float:
+def _token_overlap_score(item: ContentItem, user: User) -> float:
+    """Keyword/token-based fallback for items without LLM tags."""
     interests = [interest.lower().strip() for interest in user.interests if interest.strip()]
     if not interests:
         return 0.5
@@ -94,6 +96,27 @@ def _interest_overlap_score(item: ContentItem, user: User) -> float:
     if best_overlap > 0.0:
         return min(0.4, best_overlap * 0.4)
     return 0.0
+
+
+def _interest_overlap_score(item: ContentItem, user: User) -> float:
+    interests = {i.lower().strip() for i in user.interests if i.strip()}
+    if not interests:
+        return 0.5
+
+    tags = (item.metadata_json or {}).get("tags", [])
+    if tags:
+        # Weight by relevance — sum relevance scores for tags that map to user interests
+        score = sum(
+            t["relevance"]
+            for t in tags
+            if isinstance(t, dict) and TAG_TO_INTEREST.get(t.get("tag", ""), "").lower() in interests
+        )
+        if score == 0:
+            return 0.05  # tagged but no match — allow exploration path
+        return min(1.0, 0.5 + score * 0.3)  # score=1.0 → 0.8, score=2.0 → 1.0
+
+    # Fall back to token matching for untagged items
+    return _token_overlap_score(item, user)
 
 
 def _exploration_score(item: ContentItem) -> float:

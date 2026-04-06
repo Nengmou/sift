@@ -33,17 +33,25 @@ def feed(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    since = datetime.now(timezone.utc) - timedelta(days=2)
-    items = (
-        db.query(ContentItem)
-        .filter(
-            ContentItem.quality_score.is_not(None),
-            ContentItem.published_at >= since,
+    since = datetime.now(timezone.utc) - timedelta(days=30)
+    per_platform = 200
+    sources = ["rss", "reddit", "hn", "youtube", "twitter"]
+    items_by_id: dict[str, ContentItem] = {}
+    for source in sources:
+        batch = (
+            db.query(ContentItem)
+            .filter(
+                ContentItem.quality_score.is_not(None),
+                ContentItem.published_at >= since,
+                ContentItem.source == source,
+            )
+            .order_by(ContentItem.published_at.desc())
+            .limit(per_platform)
+            .all()
         )
-        .order_by(ContentItem.published_at.desc())
-        .limit(80)
-        .all()
-    )
+        for item in batch:
+            items_by_id[item.id] = item
+    items = list(items_by_id.values())
     ranked = rank_items_for_user(items, user)
     return templates.TemplateResponse(
         request, "feed.html", {"user": user, "items": ranked[:20]}

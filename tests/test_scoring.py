@@ -52,4 +52,6 @@ def test_llm_skipped_without_api_key(monkeypatch):
         "authenticity_score",
         "calmness_score",
         "why_this",
+        "tags",
     }
+    assert result["tags"] == []

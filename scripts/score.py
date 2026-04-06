@@ -45,6 +45,7 @@ async def run_scoring() -> None:
                 item.metadata_json = {
                     **(item.metadata_json or {}),
                     "why_this": scores.get("why_this", ""),
+                    "tags": scores.get("tags", []),
                 }
             except Exception as e:
                 logger.error("Failed to score item %s: %s", item.source_id, e)

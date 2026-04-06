@@ -16,50 +16,25 @@ logger = logging.getLogger(__name__)
 
 CANDIDATE_POOL = 100  # items pulled from DB per user before ranking
 EMAIL_PICKS = 10      # items included in the final email
-LOOKBACK_DAYS = 2     # only consider items ingested in the last N days
+LOOKBACK_DAYS = 7     # only consider items ingested in the last N days
 
 
 def _fetch_candidates(db, user: User) -> list[ContentItem]:
     """
-    Pull scored items from the last LOOKBACK_DAYS days.
-    If the user has interests, prefer items whose text overlaps — but always
-    fall back to the full pool so the feed is never empty.
+    Pull top scored items from the last LOOKBACK_DAYS days.
+    Interest matching is handled entirely by the ranker, not here.
     """
     since = datetime.now(timezone.utc) - timedelta(days=LOOKBACK_DAYS)
-
-    base_query = (
+    return (
         db.query(ContentItem)
         .filter(
             ContentItem.quality_score.isnot(None),
             ContentItem.ingested_at >= since,
         )
         .order_by(ContentItem.quality_score.desc())
+        .limit(CANDIDATE_POOL)
+        .all()
     )
-
-    if user.interests:
-        # Build a simple LIKE filter across title + body for each interest keyword
-        from sqlalchemy import or_
-        filters = []
-        for interest in user.interests:
-            keyword = f"%{interest.lower()}%"
-            filters.append(ContentItem.title.ilike(keyword))
-            filters.append(ContentItem.body_text.ilike(keyword))
-        interest_matches = base_query.filter(or_(*filters)).limit(CANDIDATE_POOL).all()
-
-        if len(interest_matches) >= EMAIL_PICKS:
-            return interest_matches
-
-        # Not enough interest-matched items — pad with top-quality items
-        matched_ids = {item.id for item in interest_matches}
-        remainder = (
-            base_query
-            .filter(ContentItem.id.notin_(matched_ids))
-            .limit(CANDIDATE_POOL - len(interest_matches))
-            .all()
-        )
-        return interest_matches + remainder
-
-    return base_query.limit(CANDIDATE_POOL).all()
 
 
 def run_delivery() -> None:

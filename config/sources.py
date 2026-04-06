@@ -233,3 +233,160 @@ YOUTUBE_CHANNEL_IDS: list[str] = [
     "UCQgFQdqiFQ_LfFBGP6z9dqQ",  # Manus AI
     "UC3Sv1JuKpbOx3csUO8FAo5g",  # Zhang Xiaojun Podcast
 ]
+
+# ---------------------------------------------------------------------------
+# Tag vocabulary for LLM-based semantic tagging
+# TAG_VOCABULARY: granular tags the LLM assigns to each item at score time.
+# TAG_TO_INTEREST: maps each tag to its parent TOPIC_CARD (user interest).
+# ---------------------------------------------------------------------------
+
+TAG_VOCABULARY: list[str] = [
+    # LLM infrastructure
+    "inference serving", "model quantization", "GPU infrastructure", "vLLM",
+    "llama.cpp", "GGUF", "ONNX", "distributed training", "edge inference",
+    "KV cache", "throughput optimization", "model batching", "speculative decoding",
+    # AI agents
+    "AI agents", "multi-agent systems", "RAG", "function calling", "tool use",
+    "agent memory", "agent orchestration", "agentic workflows", "LangChain",
+    "LlamaIndex", "CrewAI", "AutoGen",
+    # MLOps
+    "model deployment", "model monitoring", "experiment tracking", "ML pipelines",
+    "model versioning", "data drift detection", "A/B testing for ML",
+    "Weights & Biases", "MLflow", "feature stores",
+    # Prompt engineering
+    "prompting techniques", "chain-of-thought", "few-shot learning", "system prompts",
+    "prompt optimization", "structured output", "context window management",
+    "prompt injection", "jailbreaking",
+    # Frontend development
+    "React", "TypeScript", "UI/UX design", "web performance", "CSS frameworks",
+    "frontend tooling", "accessibility", "Next.js",
+    # Systems design
+    "distributed systems", "API design", "microservices", "scalability",
+    "caching strategies", "message queues", "database design", "system architecture",
+    # Data engineering
+    "data pipelines", "ETL", "stream processing", "data lakes", "data quality",
+    "Apache Spark", "dbt", "workflow orchestration", "Kafka", "Airflow",
+    # AI for productivity
+    "AI coding tools", "workflow automation", "AI writing tools",
+    "AI assistants", "AI search", "knowledge management", "AI for business",
+    "Claude Code", "Cursor",
+    # Open-source models
+    "Llama", "Mistral", "Gemma", "model fine-tuning", "LoRA", "PEFT",
+    "Hugging Face", "open weights models", "model merging",
+    # Evaluation and testing
+    "LLM evaluation", "benchmarks", "red teaming", "safety evaluation",
+    "model comparison", "evaluation frameworks", "hallucination detection",
+    "alignment research", "evals",
+]
+
+TAG_VOCABULARY_SET: set[str] = set(TAG_VOCABULARY)
+
+TAG_TO_INTEREST: dict[str, str] = {
+    # LLM infrastructure
+    "inference serving": "LLM infrastructure",
+    "model quantization": "LLM infrastructure",
+    "GPU infrastructure": "LLM infrastructure",
+    "vLLM": "LLM infrastructure",
+    "llama.cpp": "LLM infrastructure",
+    "GGUF": "LLM infrastructure",
+    "ONNX": "LLM infrastructure",
+    "distributed training": "LLM infrastructure",
+    "edge inference": "LLM infrastructure",
+    "KV cache": "LLM infrastructure",
+    "throughput optimization": "LLM infrastructure",
+    "model batching": "LLM infrastructure",
+    "speculative decoding": "LLM infrastructure",
+    # AI agents
+    "AI agents": "AI agents",
+    "multi-agent systems": "AI agents",
+    "RAG": "AI agents",
+    "function calling": "AI agents",
+    "tool use": "AI agents",
+    "agent memory": "AI agents",
+    "agent orchestration": "AI agents",
+    "agentic workflows": "AI agents",
+    "LangChain": "AI agents",
+    "LlamaIndex": "AI agents",
+    "CrewAI": "AI agents",
+    "AutoGen": "AI agents",
+    # MLOps
+    "model deployment": "MLOps",
+    "model monitoring": "MLOps",
+    "experiment tracking": "MLOps",
+    "ML pipelines": "MLOps",
+    "model versioning": "MLOps",
+    "data drift detection": "MLOps",
+    "A/B testing for ML": "MLOps",
+    "Weights & Biases": "MLOps",
+    "MLflow": "MLOps",
+    "feature stores": "MLOps",
+    # Prompt engineering
+    "prompting techniques": "Prompt engineering",
+    "chain-of-thought": "Prompt engineering",
+    "few-shot learning": "Prompt engineering",
+    "system prompts": "Prompt engineering",
+    "prompt optimization": "Prompt engineering",
+    "structured output": "Prompt engineering",
+    "context window management": "Prompt engineering",
+    "prompt injection": "Prompt engineering",
+    "jailbreaking": "Prompt engineering",
+    # Frontend development
+    "React": "Frontend development",
+    "TypeScript": "Frontend development",
+    "UI/UX design": "Frontend development",
+    "web performance": "Frontend development",
+    "CSS frameworks": "Frontend development",
+    "frontend tooling": "Frontend development",
+    "accessibility": "Frontend development",
+    "Next.js": "Frontend development",
+    # Systems design
+    "distributed systems": "Systems design",
+    "API design": "Systems design",
+    "microservices": "Systems design",
+    "scalability": "Systems design",
+    "caching strategies": "Systems design",
+    "message queues": "Systems design",
+    "database design": "Systems design",
+    "system architecture": "Systems design",
+    # Data engineering
+    "data pipelines": "Data engineering",
+    "ETL": "Data engineering",
+    "stream processing": "Data engineering",
+    "data lakes": "Data engineering",
+    "data quality": "Data engineering",
+    "Apache Spark": "Data engineering",
+    "dbt": "Data engineering",
+    "workflow orchestration": "Data engineering",
+    "Kafka": "Data engineering",
+    "Airflow": "Data engineering",
+    # AI for productivity
+    "AI coding tools": "AI for productivity",
+    "workflow automation": "AI for productivity",
+    "AI writing tools": "AI for productivity",
+    "AI assistants": "AI for productivity",
+    "AI search": "AI for productivity",
+    "knowledge management": "AI for productivity",
+    "AI for business": "AI for productivity",
+    "Claude Code": "AI for productivity",
+    "Cursor": "AI for productivity",
+    # Open-source models
+    "Llama": "Open-source models",
+    "Mistral": "Open-source models",
+    "Gemma": "Open-source models",
+    "model fine-tuning": "Open-source models",
+    "LoRA": "Open-source models",
+    "PEFT": "Open-source models",
+    "Hugging Face": "Open-source models",
+    "open weights models": "Open-source models",
+    "model merging": "Open-source models",
+    # Evaluation and testing
+    "LLM evaluation": "Evaluation and testing",
+    "benchmarks": "Evaluation and testing",
+    "red teaming": "Evaluation and testing",
+    "safety evaluation": "Evaluation and testing",
+    "model comparison": "Evaluation and testing",
+    "evaluation frameworks": "Evaluation and testing",
+    "hallucination detection": "Evaluation and testing",
+    "alignment research": "Evaluation and testing",
+    "evals": "Evaluation and testing",
+}

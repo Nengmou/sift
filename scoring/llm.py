@@ -12,10 +12,13 @@ import re
 import httpx
 
 from config.settings import get_settings
+from config.sources import TAG_VOCABULARY, TAG_VOCABULARY_SET
 from ingestion.base import RawItem
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+_TAG_LIST = ", ".join(TAG_VOCABULARY)
 
 SCORE_PROMPT = """You are a content quality evaluator for a calm, substance-focused content platform.
 
@@ -31,8 +34,16 @@ Score the following content on three dimensions, each as a float between 0.0 and
    0 = highly anxiety-inducing (urgency, doom, outrage, FOMO).
    1 = calm, constructive, informative without stress.
 
+4. tags: List of 0–5 tags this content covers, chosen ONLY from this list:
+   {tag_list}
+   For each matching tag assign a relevance score 0.0–1.0:
+     1.0 = primary focus of the content
+     0.5 = clearly covered but not the main focus
+     0.2 = briefly mentioned or tangential
+   Return [] if no tags apply.
+
 Respond with ONLY valid JSON — no markdown, no explanation:
-{{"quality": float, "authenticity": float, "calmness": float, "why_this": "1-2 sentence user-facing summary"}}
+{{"quality": float, "authenticity": float, "calmness": float, "tags": [{{"tag": "tag name", "relevance": float}}], "why_this": "1-2 sentence user-facing summary"}}
 
 Content to evaluate:
 Source: {source}
@@ -74,6 +85,7 @@ def _fallback_scores(item: RawItem) -> dict[str, float]:
         "quality_score": float(max(0.0, min(1.0, quality))),
         "authenticity_score": float(max(0.0, min(1.0, authenticity))),
         "calmness_score": float(max(0.0, min(1.0, calmness))),
+        "tags": [],
         "why_this": _build_summary(item),
     }
 
@@ -88,6 +100,7 @@ async def score_item(item: RawItem) -> dict[str, float]:
         return _fallback_scores(item)
 
     prompt = SCORE_PROMPT.format(
+        tag_list=_TAG_LIST,
         source=item.source,
         title=item.title or "(no title)",
         body=(item.body_text or "")[:500],
@@ -105,17 +118,25 @@ async def score_item(item: RawItem) -> dict[str, float]:
                     "model": settings.openrouter_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.1,
-                    "max_tokens": 100,
+                    "max_tokens": 300,
                 },
             )
             resp.raise_for_status()
 
         content = resp.json()["choices"][0]["message"]["content"].strip()
+        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
         parsed = json.loads(content)
+        raw_tags = parsed.get("tags", [])
+        validated_tags = [
+            {"tag": t["tag"], "relevance": float(max(0.0, min(1.0, t["relevance"])))}
+            for t in raw_tags
+            if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET
+        ]
         return {
             "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
             "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),
             "calmness_score": float(max(0.0, min(1.0, parsed["calmness"]))),
+            "tags": validated_tags,
             "why_this": str(parsed.get("why_this") or _build_summary(item)),
         }
     except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:
