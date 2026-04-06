@@ -1,0 +1,108 @@
+# Sift — Claude Code context
+
+Sift is an AI-powered content discovery app for ML/AI practitioners. It surfaces authentic,
+low-anxiety signal from curated sources and delivers a daily digest email.
+
+## Dev setup
+
+```bash
+python3.13 -m venv .venv && source .venv/bin/activate
+pip install uv
+uv pip install --system -e ".[dev]"
+cp .env.example .env   # fill in at minimum SECRET_KEY and DATABASE_URL
+alembic upgrade head   # creates sift.db (SQLite) or migrates Postgres
+uvicorn api.main:app --reload
+```
+
+Tests:
+```bash
+pytest tests/ -v
+```
+
+## Pipeline overview
+
+```
+ingest (scripts/ingest.py)
+  └─ HN · RSS · Reddit · Twitter · YouTube
+       └─ deduplicate → persist ContentItem (quality_score=NULL)
+
+score (scripts/score.py)
+  └─ LLM via OpenRouter (Gemini Flash) → quality/authenticity/anxiety scores
+       └─ fallback heuristics when OPENROUTER_API_KEY is absent
+
+deliver (scripts/deliver.py)
+  └─ per-user interest filtering → rank_items_for_user() → Resend email
+```
+
+Railway cron schedules (railway.toml):
+- ingest: `0 */2 * * *` (every 2 h)
+- score:  `30 */2 * * *` (every 2 h, 30 min after ingest)
+- deliver: `*/15 * * * *` (every 15 min, matches per-user delivery_time windows)
+
+## Key conventions
+
+### `metadata_json` vs `"metadata"`
+`ContentItem.metadata_json` is the Python attribute name; the DB column is `"metadata"`.
+`metadata` is reserved by SQLAlchemy's Declarative API — never rename it back.
+
+```python
+# correct
+item.metadata_json = {"why_this": "..."}
+ContentItem(metadata_json={"subreddit": "MachineLearning"})
+```
+
+### SQLite / Postgres dual compatibility
+`db/session.py` conditionally omits `pool_size`/`max_overflow` for SQLite and sets
+`check_same_thread=False`. Use generic `JSON` (not `postgresql.JSON`) and `String(36)`
+(not `postgresql.UUID`) in models. SQLite is the default for local dev; set `DATABASE_URL`
+to a Postgres URL for staging/prod.
+
+### Optional connectors
+Twitter and YouTube connectors are only instantiated when the corresponding API key is
+present (`settings.has_twitter`, `settings.has_youtube`). HN, RSS, and Reddit require no
+keys. LLM scoring falls back to keyword heuristics when `OPENROUTER_API_KEY` is absent —
+the app is fully functional without any paid API keys.
+
+### Deduplication
+`scripts/ingest.py` deduplicates against the most recent 500 items using:
+1. URL canonicalization (strips UTM and tracking params, sorts remaining query params)
+2. Fuzzy title match (SequenceMatcher ≥ 0.97)
+
+### Email dry-run
+`DRY_RUN_EMAIL=true` (default) logs emails instead of sending. Set to `false` and add
+`RESEND_API_KEY` for real sending. Magic links are printed to the server log in
+`ENVIRONMENT=development`.
+
+## Scoring philosophy
+
+Three dimensions, all 0–1 floats (higher = better):
+- **quality_score** — depth, originality, technical substance
+- **authenticity_score** — personal practitioner voice vs. performative/PR content
+- **anxiety_score** — calm, grounded framing (1 = no anxiety; 0 = doom/hype)
+
+**Do not** add engagement metrics (likes, views, shares) to scoring. The editorial bias is
+toward authentic builders over pundits and engagement farmers.
+
+Composite rank (see `scoring/ranker.py`):
+```
+score = quality×0.4 + authenticity×0.3 + anxiety×0.3
+      + interest_overlap×0.35  (applied when user has interests and overlap > 0)
+```
+
+Diversity caps enforce max 3 items per platform and max 2 per publisher in the final list.
+
+## Source curation
+
+All curated lists live in `config/sources.py` — edit there to add/remove sources without
+touching ingestion logic. All YouTube entries should be `UC…` channel IDs (not `@handles`)
+to avoid expensive Search API quota usage.
+
+## Alembic
+
+```bash
+alembic upgrade head                        # apply migrations
+alembic revision --autogenerate -m "msg"    # generate new migration
+```
+
+`db/migrations/env.py` falls back to `settings.database_url` when `DATABASE_URL` env var
+is absent, so migrations work in local dev without exporting the variable.
