@@ -1,6 +1,31 @@
 # sift
 In a world of noisy, performative social media, Sift surfaces authentic, practice-oriented, and anxiety-reducing content—so users can consume less stress and more substance.
 
+## Local development
+
+```bash
+python3.13 -m venv .venv && source .venv/bin/activate
+pip install uv
+uv pip install --system -e ".[dev]"
+cp .env.example .env       # fill in SECRET_KEY at minimum
+alembic upgrade head       # creates sift.db
+uvicorn api.main:app --reload
+```
+
+App runs at http://localhost:8000. Stop the server with `Ctrl+C`.
+
+To run the pipeline manually:
+```bash
+python -m scripts.ingest   # fetch content from all sources
+python -m scripts.score    # score unscored items via LLM (or heuristic fallback)
+python -m scripts.deliver  # send digest emails (dry-run by default)
+```
+
+Tests:
+```bash
+pytest tests/ -v
+```
+
 ## Deployment
 
 Railway services are defined in [railway.toml](/Users/nengmou/Projects/sift/railway.toml):
