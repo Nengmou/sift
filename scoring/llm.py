@@ -3,7 +3,7 @@ LLM-based scoring via OpenRouter → Gemini Flash.
 Scores each item on three dimensions (0.0–1.0):
   quality_score      — informational depth, sourcing, originality
   authenticity_score — personal voice, lived experience vs. performance
-  anxiety_score      — 1.0 = calm/constructive; 0.0 = stress-inducing/outrage bait
+  calmness_score     — 1.0 = calm/constructive; 0.0 = stress-inducing/outrage bait
 """
 import json
 import logging
@@ -27,12 +27,12 @@ Score the following content on three dimensions, each as a float between 0.0 and
 2. authenticity: Genuine personal experience or expertise vs. performative/engagement-bait.
    0 = repackaged hot takes, 1 = clear practitioner voice sharing real experience.
 
-3. anxiety: Emotional tone for the reader.
+3. calmness: Emotional tone for the reader.
    0 = highly anxiety-inducing (urgency, doom, outrage, FOMO).
    1 = calm, constructive, informative without stress.
 
 Respond with ONLY valid JSON — no markdown, no explanation:
-{{"quality": float, "authenticity": float, "anxiety": float, "why_this": "1-2 sentence user-facing summary"}}
+{{"quality": float, "authenticity": float, "calmness": float, "why_this": "1-2 sentence user-facing summary"}}
 
 Content to evaluate:
 Source: {source}
@@ -65,7 +65,7 @@ def _fallback_scores(item: RawItem) -> dict[str, float]:
     text = f"{item.title or ''} {item.body_text or ''}".lower()
     quality = 0.55 + 0.06 * sum(1 for s in _POSITIVE_SIGNALS if s in text)
     authenticity = 0.5 + 0.10 * sum(1 for s in _AUTHENTIC_SIGNALS if s in text)
-    anxiety = 0.7 - 0.12 * sum(1 for s in _ANXIETY_SIGNALS if s in text)
+    calmness = 0.7 - 0.12 * sum(1 for s in _ANXIETY_SIGNALS if s in text)
     if item.source == "rss":
         authenticity += 0.05
     if item.source == "hn":
@@ -73,7 +73,7 @@ def _fallback_scores(item: RawItem) -> dict[str, float]:
     return {
         "quality_score": float(max(0.0, min(1.0, quality))),
         "authenticity_score": float(max(0.0, min(1.0, authenticity))),
-        "anxiety_score": float(max(0.0, min(1.0, anxiety))),
+        "calmness_score": float(max(0.0, min(1.0, calmness))),
         "why_this": _build_summary(item),
     }
 
@@ -81,7 +81,7 @@ def _fallback_scores(item: RawItem) -> dict[str, float]:
 async def score_item(item: RawItem) -> dict[str, float]:
     """
     Score a RawItem. Falls back to heuristics if no OpenRouter key is set.
-    Returns: {"quality_score": float, "authenticity_score": float, "anxiety_score": float, "why_this": str}
+    Returns: {"quality_score": float, "authenticity_score": float, "calmness_score": float, "why_this": str}
     """
     if not settings.has_openrouter:
         logger.debug("No OpenRouter key — using fallback scores for %s", item.source_id)
@@ -115,7 +115,7 @@ async def score_item(item: RawItem) -> dict[str, float]:
         return {
             "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
             "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),
-            "anxiety_score": float(max(0.0, min(1.0, parsed["anxiety"]))),
+            "calmness_score": float(max(0.0, min(1.0, parsed["calmness"]))),
             "why_this": str(parsed.get("why_this") or _build_summary(item)),
         }
     except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:

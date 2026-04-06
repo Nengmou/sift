@@ -1,4 +1,5 @@
 """Combines LLM scores into a composite rank for a given user."""
+import re
 from urllib.parse import urlsplit
 
 from db.models import ContentItem, User
@@ -36,8 +37,22 @@ def _available_source_count(items: list[ContentItem]) -> int:
     return len({item.source for item in items})
 
 
+def _tokenize_interest(text: str) -> set[str]:
+    tokens = {
+        token
+        for token in re.findall(r"[a-z0-9]+", text.lower())
+        if len(token) >= 3
+    }
+    normalized: set[str] = set()
+    for token in tokens:
+        normalized.add(token)
+        if token.endswith("s") and len(token) > 4:
+            normalized.add(token[:-1])
+    return normalized
+
+
 def _interest_overlap_score(item: ContentItem, user: User) -> float:
-    interests = [interest.lower() for interest in user.interests]
+    interests = [interest.lower().strip() for interest in user.interests if interest.strip()]
     if not interests:
         return 0.5
 
@@ -54,10 +69,38 @@ def _interest_overlap_score(item: ContentItem, user: User) -> float:
         )
     ).lower()
 
-    matches = sum(1 for interest in interests if interest.lower() in haystack)
-    if matches == 0:
+    exact_matches = sum(1 for interest in interests if interest in haystack)
+    if exact_matches:
+        return min(1.0, 0.65 + 0.2 * exact_matches)
+
+    haystack_tokens = _tokenize_interest(haystack)
+    if not haystack_tokens:
         return 0.0
-    return min(1.0, matches / min(len(interests), 3))
+
+    overlap_scores: list[float] = []
+    for interest in interests:
+        interest_tokens = _tokenize_interest(interest)
+        if not interest_tokens:
+            continue
+        overlap = len(interest_tokens & haystack_tokens) / len(interest_tokens)
+        overlap_scores.append(overlap)
+
+    if not overlap_scores:
+        return 0.0
+
+    best_overlap = max(overlap_scores)
+    if best_overlap >= 0.5:
+        return min(0.75, 0.35 + best_overlap * 0.5)
+    if best_overlap > 0.0:
+        return min(0.4, best_overlap * 0.4)
+    return 0.0
+
+
+def _exploration_score(item: ContentItem) -> float:
+    q = item.quality_score or 0.0
+    a = item.authenticity_score or 0.0
+    c = item.calmness_score or 0.0
+    return round(a * 0.45 + c * 0.35 + q * 0.2, 4)
 
 
 def compute_rank(item: ContentItem, user: User) -> float:
@@ -67,15 +110,19 @@ def compute_rank(item: ContentItem, user: User) -> float:
     Weights (tune based on early user feedback):
       quality_score      0.4  — depth and value
       authenticity_score 0.3  — real practitioner voice
-      anxiety_score      0.3  — calm framing (higher = less anxious)
+      calmness_score     0.3  — calm framing (higher = calmer)
+
+    The base weights intentionally sum to 0.92 instead of 1.0 so there is
+    explicit headroom for the exploration bonus on calm, authentic adjacent items.
     """
     q = item.quality_score or 0.0
     a = item.authenticity_score or 0.0
-    z = item.anxiety_score or 0.0
+    c = item.calmness_score or 0.0
     r = _interest_overlap_score(item, user)
-    if user.interests and r == 0.0:
-        return round(q * 0.25 + a * 0.2 + z * 0.15, 4)
-    return round(q * 0.3 + a * 0.2 + z * 0.15 + r * 0.35, 4)
+    exploration = _exploration_score(item)
+    base_score = q * 0.3 + a * 0.24 + c * 0.2 + r * 0.18
+    exploration_bonus = (1.0 - min(1.0, r)) * exploration * 0.08
+    return round(base_score + exploration_bonus, 4)
 
 
 def _apply_caps(
@@ -141,10 +188,13 @@ def rank_items_for_user(
     elif available_sources == 2:
         effective_max_per_platform = max(max_per_platform, 10)
 
-    min_relevance = 0.1 if user.interests else 0.0
+    min_relevance = 0.05 if user.interests else 0.0
     filtered_items = [
         item for item in items
-        if _interest_overlap_score(item, user) >= min_relevance
+        if (
+            _interest_overlap_score(item, user) >= min_relevance
+            or _exploration_score(item) >= 0.72
+        )
     ]
     candidate_items = filtered_items or items
 

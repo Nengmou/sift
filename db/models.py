@@ -110,7 +110,7 @@ class ContentItem(Base):
     )
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     authenticity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
-    anxiety_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    calmness_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     content_type: Mapped[str | None] = mapped_column(ContentTypeEnum, nullable=True)
     metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, nullable=False, default=dict)
     ingested_at: Mapped[datetime] = mapped_column(

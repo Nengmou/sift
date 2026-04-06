@@ -31,7 +31,7 @@ def upgrade() -> None:
     sa.Column('published_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('quality_score', sa.Float(), nullable=True),
     sa.Column('authenticity_score', sa.Float(), nullable=True),
-    sa.Column('anxiety_score', sa.Float(), nullable=True),
+    sa.Column('calmness_score', sa.Float(), nullable=True),
     sa.Column('content_type', sa.Enum('article', 'thread', 'video', 'post', 'comment', name='content_type_enum'), nullable=True),
     sa.Column('metadata', sa.JSON(), nullable=False),
     sa.Column('ingested_at', sa.DateTime(timezone=True), nullable=False),

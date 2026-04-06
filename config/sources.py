@@ -111,16 +111,16 @@ TWITTER_ACCOUNTS: list[str] = [
     "simonw",
     "karpathy",
     "eugeneyan",
+    "chiphuyen",
+    "rasbt",
+    "HamelHusain",
+    "vboykis",
+    "jeremyphoward",
+    "thom_wolf",
+    "osanseviero",
 ]
 
 # Additional curated X accounts kept here for later re-enable if API budget allows:
-# "chiphuyen",
-# "rasbt",
-# "HamelHusain",
-# "vboykis",
-# "jeremyphoward",
-# "thom_wolf",
-# "osanseviero",
 # "joao_gante",
 # "_philschmid",
 # "ggerganov",

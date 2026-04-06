@@ -26,9 +26,12 @@
 2. Confirm scored rows receive:
    - `quality_score`
    - `authenticity_score`
-   - `anxiety_score`
+   - `calmness_score`
 3. Review a few users’ ranked feeds manually.
-4. Confirm platform, publisher, and content-type caps improve diversity without collapsing feed length.
+4. Confirm the feed balances:
+   - direct interest alignment
+   - calm, authentic adjacent exploration
+5. Confirm platform, publisher, and content-type caps improve diversity without collapsing feed length.
 
 ## 4. Validate Delivery Surfaces
 

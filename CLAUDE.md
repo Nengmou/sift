@@ -27,7 +27,7 @@ ingest (scripts/ingest.py)
        └─ deduplicate → persist ContentItem (quality_score=NULL)
 
 score (scripts/score.py)
-  └─ LLM via OpenRouter (Gemini Flash) → quality/authenticity/anxiety scores
+  └─ LLM via OpenRouter (Gemini Flash) → quality/authenticity/calmness scores
        └─ fallback heuristics when OPENROUTER_API_KEY is absent
 
 deliver (scripts/deliver.py)
@@ -88,14 +88,14 @@ quality for YouTube videos needs improvement, transcript extraction is the lever
 Three dimensions, all 0–1 floats (higher = better):
 - **quality_score** — depth, originality, technical substance
 - **authenticity_score** — personal practitioner voice vs. performative/PR content
-- **anxiety_score** — calm, grounded framing (1 = no anxiety; 0 = doom/hype)
+- **calmness_score** — calm, grounded framing (1 = calmer; 0 = doom/hype)
 
 **Do not** add engagement metrics (likes, views, shares) to scoring. The editorial bias is
 toward authentic builders over pundits and engagement farmers.
 
 Composite rank (see `scoring/ranker.py`):
 ```
-score = quality×0.4 + authenticity×0.3 + anxiety×0.3
+score = quality×0.4 + authenticity×0.3 + calmness×0.3
       + interest_overlap×0.35  (applied when user has interests and overlap > 0)
 ```
 

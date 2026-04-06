@@ -17,10 +17,10 @@ def test_fallback_scores_returns_valid_range():
 
     assert 0.0 <= scores["quality_score"] <= 1.0
     assert 0.0 <= scores["authenticity_score"] <= 1.0
-    assert 0.0 <= scores["anxiety_score"] <= 1.0
+    assert 0.0 <= scores["calmness_score"] <= 1.0
 
 
-def test_fallback_anxiety_penalizes_doom_keywords():
+def test_fallback_calmness_penalizes_doom_keywords():
     item = RawItem(
         source="rss",
         source_id="2",
@@ -31,7 +31,7 @@ def test_fallback_anxiety_penalizes_doom_keywords():
 
     scores = llm._fallback_scores(item)
 
-    assert scores["anxiety_score"] < 0.5
+    assert scores["calmness_score"] < 0.5
 
 
 def test_llm_skipped_without_api_key(monkeypatch):
@@ -50,6 +50,6 @@ def test_llm_skipped_without_api_key(monkeypatch):
     assert set(result) == {
         "quality_score",
         "authenticity_score",
-        "anxiety_score",
+        "calmness_score",
         "why_this",
     }
