@@ -20,7 +20,8 @@ settings = get_settings()
 
 _TAG_LIST = ", ".join(TAG_VOCABULARY)
 
-SCORE_PROMPT = """You are a content quality evaluator for a calm, substance-focused content platform.
+SCORE_PROMPT = """\
+You are a content quality evaluator for a calm, substance-focused content platform.
 
 Score the following content on three dimensions, each as a float between 0.0 and 1.0:
 
@@ -41,7 +42,9 @@ Score the following content on three dimensions, each as a float between 0.0 and
    Return [] if nothing matches.
 
 Respond with ONLY valid JSON — no markdown, no explanation:
-{{"quality": float, "authenticity": float, "calmness": float, "tags": [{{"tag": "tag name", "relevance": float}}], "why_this": "1-2 sentence user-facing summary"}}
+{{"quality": float, "authenticity": float, "calmness": float,
+"tags": [{{"tag": "tag name", "relevance": float}}],
+"why_this": "1-2 sentence user-facing summary"}}
 
 Content to evaluate:
 Source: {source}
@@ -53,7 +56,8 @@ Body (first 500 chars): {body}
 async def score_item(item: RawItem) -> dict[str, float]:
     """
     Score a RawItem via LLM.
-    Returns: {"quality_score": float, "authenticity_score": float, "calmness_score": float, "tags": list, "why_this": str}
+    Returns dict with keys: quality_score, authenticity_score,
+    calmness_score, tags, why_this.
     Raises: RuntimeError if LLM scoring fails or no API key is configured.
     """
     if not settings.has_openrouter:
@@ -93,14 +97,15 @@ async def score_item(item: RawItem) -> dict[str, float]:
         for t in raw_tags:
             if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET and t["tag"] not in seen:
                 seen.add(t["tag"])
-                validated_tags.append({"tag": t["tag"], "relevance": float(max(0.0, min(1.0, t["relevance"])))})
+                relevance = float(max(0.0, min(1.0, t["relevance"])))
+                validated_tags.append({"tag": t["tag"], "relevance": relevance})
 
         return {
             "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
             "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),
             "calmness_score": float(max(0.0, min(1.0, parsed["calmness"]))),
             "tags": validated_tags,
-            "why_this": str(parsed.get("why_this") or _build_summary(item)),
+            "why_this": str(parsed.get("why_this") or (item.title or "")[:220]),
         }
     except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:
         raise RuntimeError(f"LLM scoring failed for {item.source_id}: {e}") from e

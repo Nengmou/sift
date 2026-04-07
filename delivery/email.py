@@ -56,7 +56,8 @@ def send_magic_link(email: str, verify_url: str) -> str:
         "html": (
             "<p style='font-family:system-ui'>Click the link below to sign in to Sift.</p>"
             f"<p><a href='{verify_url}'>Sign in to Sift</a></p>"
-            f"<p style='color:#9ca3af;font-size:0.8rem'>Link expires in {settings.magic_link_ttl_minutes} minutes.</p>"
+            f"<p style='color:#9ca3af;font-size:0.8rem'>"
+            f"Link expires in {settings.magic_link_ttl_minutes} minutes.</p>"
         ),
     }
     result = resend.Emails.send(params)

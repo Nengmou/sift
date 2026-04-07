@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from scoring.ranker import _interest_overlap_score, compute_rank, rank_items_for_user
+from scoring.ranker import compute_rank, rank_items_for_user
 
 
 def make_user(*interests: str):
@@ -37,17 +37,29 @@ def make_item(
 def test_diversity_cap_per_platform():
     user = make_user()
     items = [
-        make_item("rss", f"rss {i}", url=f"https://rss{i}.example.com/post")
+        make_item(
+            "rss", f"rss {i}",
+            url=f"https://rss{i}.example.com/post",
+        )
         for i in range(6)
     ] + [
-        make_item("reddit", f"reddit {i}", metadata_json={"subreddit": f"sub{i}"})
+        make_item(
+            "reddit", f"reddit {i}",
+            metadata_json={"subreddit": f"sub{i}"},
+        )
         for i in range(3)
     ] + [
-        make_item("youtube", f"youtube {i}", metadata_json={"channel_id": f"chan{i}"}, content_type="video")
+        make_item(
+            "youtube", f"youtube {i}",
+            metadata_json={"channel_id": f"chan{i}"},
+            content_type="video",
+        )
         for i in range(3)
     ]
 
-    ranked = rank_items_for_user(items, user, max_per_platform=3, target_min_items=1)
+    ranked = rank_items_for_user(
+        items, user, max_per_platform=3, target_min_items=1,
+    )
 
     assert sum(1 for item in ranked if item.source == "rss") <= 3
     assert sum(1 for item in ranked if item.source == "reddit") <= 3
@@ -57,45 +69,73 @@ def test_diversity_cap_per_platform():
 def test_diversity_cap_per_publisher():
     user = make_user()
     items = [
-        make_item("rss", f"hf {i}", url=f"https://huggingface.co/blog/{i}")
+        make_item(
+            "rss", f"hf {i}",
+            url=f"https://huggingface.co/blog/{i}",
+        )
         for i in range(6)
     ] + [
         make_item("rss", "other", url="https://simonwillison.net/post")
     ]
 
-    ranked = rank_items_for_user(items, user, max_per_publisher=2, target_min_items=1)
+    ranked = rank_items_for_user(
+        items, user, max_per_publisher=2, target_min_items=1,
+    )
 
     hf_items = [item for item in ranked if "huggingface.co" in item.url]
     assert len(hf_items) <= 2
 
 
 def test_interest_overlap_zero_returns_low_rank():
-    user = make_user("AI agents")
-    off_topic = make_item("rss", "Gardening tips", body_text="Tomatoes and soil health.")
-    on_topic = make_item("rss", "AI agents in production", body_text="Agent orchestration.")
+    user = make_user("AI agents & automation")
+    off_topic = make_item(
+        "rss", "Gardening tips",
+        body_text="Tomatoes and soil health.",
+    )
+    on_topic = make_item(
+        "rss", "AI agents in production",
+        body_text="Agent orchestration.",
+        metadata_json={
+            "tags": [{"tag": "AI agents", "relevance": 1.0}],
+        },
+    )
 
     assert compute_rank(off_topic, user) < compute_rank(on_topic, user)
 
 
-def test_partial_interest_overlap_scores_above_zero():
-    user = make_user("AI agents")
-    item = make_item("rss", "Building better AI workflows", body_text="Agent evaluation patterns.")
+def test_tagged_item_with_matching_interest_scores_above_zero():
+    user = make_user("AI agents & automation")
+    item = make_item(
+        "rss", "Building better AI workflows",
+        body_text="Agent evaluation patterns.",
+        metadata_json={
+            "tags": [{"tag": "AI agents", "relevance": 0.8}],
+        },
+    )
 
-    assert _interest_overlap_score(item, user) > 0.0
+    assert compute_rank(item, user) > 0.0
 
 
-def test_no_interests_returns_half():
+def test_no_interests_returns_full_quality_composite():
     user = make_user()
-    item = make_item("rss", "Anything")
+    item = make_item("rss", "Anything", quality=0.8, authenticity=0.8, calmness=0.8)
 
-    assert _interest_overlap_score(item, user) == 0.5
+    # _relevance_score returns 1.0 for users with no interests
+    # compute_rank = 1.0 * (0.5*0.8 + 0.3*0.8 + 0.2*0.8) = 0.8
+    assert compute_rank(item, user) == 0.8
 
 
 def test_rank_items_falls_back_to_all_when_filtered_pool_empty():
-    user = make_user("AI agents")
+    user = make_user("AI agents & automation")
     items = [
-        make_item("rss", "Gardening tips", body_text="Tomatoes and soil health."),
-        make_item("reddit", "Cooking thread", metadata_json={"subreddit": "recipes"}),
+        make_item(
+            "rss", "Gardening tips",
+            body_text="Tomatoes and soil health.",
+        ),
+        make_item(
+            "reddit", "Cooking thread",
+            metadata_json={"subreddit": "recipes"},
+        ),
     ]
 
     ranked = rank_items_for_user(items, user)
@@ -104,12 +144,12 @@ def test_rank_items_falls_back_to_all_when_filtered_pool_empty():
 
 
 def test_high_authenticity_calm_item_survives_as_exploration():
-    user = make_user("AI agents")
+    user = make_user("AI agents & automation")
     items = [
         make_item(
             "rss",
             "Engineering excellence from NASA",
-            body_text="A calm, practical set of lessons learned about engineering craft.",
+            body_text="A calm, practical set of lessons learned.",
             quality=0.8,
             authenticity=0.9,
             calmness=0.9,
@@ -126,16 +166,25 @@ def test_high_authenticity_calm_item_survives_as_exploration():
 
     ranked = rank_items_for_user(items, user, target_min_items=1)
 
-    assert any(item.title == "Engineering excellence from NASA" for item in ranked)
+    assert any(
+        item.title == "Engineering excellence from NASA"
+        for item in ranked
+    )
 
 
 def test_adaptive_relaxation_fills_feed_with_default_target():
     user = make_user()
     items = [
-        make_item("rss", f"rss {i}", url=f"https://rss{i}.example.com/post")
+        make_item(
+            "rss", f"rss {i}",
+            url=f"https://rss{i}.example.com/post",
+        )
         for i in range(5)
     ] + [
-        make_item("reddit", f"reddit {i}", metadata_json={"subreddit": f"sub{i}"})
+        make_item(
+            "reddit", f"reddit {i}",
+            metadata_json={"subreddit": f"sub{i}"},
+        )
         for i in range(5)
     ]
 

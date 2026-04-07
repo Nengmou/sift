@@ -3,8 +3,8 @@ Cron script: fetch content from all sources and persist to DB.
 Run: python -m scripts.ingest
 Railway: schedule every 2–4 hours.
 """
-import asyncio
 import argparse
+import asyncio
 import logging
 from difflib import SequenceMatcher
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -15,8 +15,8 @@ from db.models import ContentItem
 from db.session import SessionLocal
 from ingestion.base import Source
 from ingestion.hn import HNConnector
-from ingestion.rss import RSSConnector
 from ingestion.reddit import RedditConnector
+from ingestion.rss import RSSConnector
 from ingestion.twitter import TwitterConnector
 from ingestion.youtube import YouTubeConnector
 
@@ -188,7 +188,9 @@ async def run_ingestion(selected_sources: set[str] | None = None) -> None:
                         connector_duplicates += 1
                         continue
 
-                    if any(is_duplicate(raw.url, raw.title, candidate) for candidate in recent_items):
+                    if any(
+                        is_duplicate(raw.url, raw.title, c) for c in recent_items
+                    ):
                         connector_duplicates += 1
                         continue
 

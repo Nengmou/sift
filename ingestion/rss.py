@@ -1,6 +1,5 @@
 """RSS/Atom feed connector using feedparser."""
 import asyncio
-import datetime
 import hashlib
 from email.utils import parsedate_to_datetime
 
@@ -39,7 +38,7 @@ class RSSConnector(BaseConnector):
             async with httpx.AsyncClient(timeout=10) as client:
                 og_tasks = [fetch_og_image(client, item.url) for item in needs_og]
                 og_results = await asyncio.gather(*og_tasks, return_exceptions=True)
-                for item, og_url in zip(needs_og, og_results):
+                for item, og_url in zip(needs_og, og_results, strict=True):
                     if isinstance(og_url, str):
                         item.metadata["thumbnail_url"] = og_url
 

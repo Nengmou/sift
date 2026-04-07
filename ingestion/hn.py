@@ -40,7 +40,7 @@ class HNConnector(BaseConnector):
         published_at = None
         if data.get("time"):
             published_at = datetime.datetime.fromtimestamp(
-                data["time"], tz=datetime.timezone.utc
+                data["time"], tz=datetime.UTC
             )
 
         url = data.get("url") or f"https://news.ycombinator.com/item?id={data['id']}"

@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from secrets import token_urlsafe
 
-from fastapi import APIRouter, Depends, Form, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
@@ -69,7 +69,7 @@ async def signup(
         user.delivery_time = delivery_time
 
     user.magic_link_token = token_urlsafe(32)
-    user.magic_link_expires_at = datetime.now(timezone.utc) + timedelta(
+    user.magic_link_expires_at = datetime.now(UTC) + timedelta(
         minutes=settings.magic_link_ttl_minutes
     )
     db.commit()
@@ -83,10 +83,14 @@ async def signup(
     # In dev, show the link directly so you can click it without email
     dev_hint = ""
     if not settings.is_production:
-        dev_hint = f"<p style='margin-top:1rem;font-size:0.875rem;color:#6b7280;'>Dev link: <a href='{verify_url}'>{verify_url}</a></p>"
+        dev_hint = (
+            f"<p style='margin-top:1rem;font-size:0.875rem;color:#6b7280;'>"
+            f"Dev link: <a href='{verify_url}'>{verify_url}</a></p>"
+        )
 
     return HTMLResponse(
-        f"<html><body style='font-family:system-ui;max-width:480px;margin:4rem auto;padding:0 1rem'>"
+        "<html><body style='font-family:system-ui;"
+        "max-width:480px;margin:4rem auto;padding:0 1rem'>"
         f"<h2>Check your email</h2>"
         f"<p>We sent a sign-in link to <strong>{email}</strong>.</p>"
         f"{dev_hint}"
@@ -101,7 +105,7 @@ def verify_magic_link(token: str, db: Session = Depends(get_db)):
         db.query(User)
         .filter(
             User.magic_link_token == token,
-            User.magic_link_expires_at > datetime.now(timezone.utc),
+            User.magic_link_expires_at > datetime.now(UTC),
         )
         .first()
     )
@@ -111,7 +115,7 @@ def verify_magic_link(token: str, db: Session = Depends(get_db)):
     session = UserSession(
         user_id=user.id,
         token=token_urlsafe(32),
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.session_ttl_days),
+        expires_at=datetime.now(UTC) + timedelta(days=settings.session_ttl_days),
     )
     user.magic_link_token = None
     user.magic_link_expires_at = None

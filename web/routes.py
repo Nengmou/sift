@@ -1,6 +1,6 @@
 import html
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -26,9 +26,9 @@ def _timeago(dt: datetime | None) -> str:
     """Convert a datetime to a relative time string."""
     if dt is None:
         return ""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     delta = now - dt
     seconds = int(delta.total_seconds())
     if seconds < 60:

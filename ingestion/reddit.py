@@ -38,7 +38,7 @@ class RedditConnector(BaseConnector):
         published_at = None
         if post.get("created_utc"):
             published_at = datetime.datetime.fromtimestamp(
-                post["created_utc"], tz=datetime.timezone.utc
+                post["created_utc"], tz=datetime.UTC
             )
 
         is_self = post.get("is_self", False)
