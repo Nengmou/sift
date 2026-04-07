@@ -19,10 +19,11 @@ class Settings(BaseSettings):
     # Database — defaults to SQLite for local dev; set DATABASE_URL for Postgres
     database_url: str = "sqlite:///./sift.db"
 
-    # LLM — optional; scoring falls back to heuristics when absent
+    # LLM — optional; scoring raises RuntimeError when absent
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_model: str = "google/gemini-flash-1.5"
+    scoring_concurrency: int = 5
 
     # Email — optional; dry-run mode when absent
     resend_api_key: str = ""

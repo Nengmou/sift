@@ -53,15 +53,65 @@ Body (first 500 chars): {body}
 /no_think
 """
 
-async def score_item(item: RawItem) -> dict[str, float]:
+async def _do_request(client: httpx.AsyncClient, prompt: str) -> httpx.Response:
+    """Send scoring prompt to OpenRouter and return the response."""
+    resp = await client.post(
+        f"{settings.openrouter_base_url}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": settings.openrouter_model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": 1024,
+        },
+    )
+    resp.raise_for_status()
+    return resp
+
+
+def _parse_response(resp: httpx.Response, item: RawItem) -> dict:
+    """Parse and validate the LLM JSON response."""
+    content = resp.json()["choices"][0]["message"]["content"].strip()
+    content = re.sub(
+        r"<think>.*?</think>", "", content, flags=re.DOTALL,
+    ).strip()
+    content = re.sub(r":\s*(\d+)-(\d+)", r": \1.\2", content)
+    parsed = json.loads(content)
+    raw_tags = parsed.get("tags", [])
+    seen: set[str] = set()
+    validated_tags = []
+    for t in raw_tags:
+        if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET and t["tag"] not in seen:
+            seen.add(t["tag"])
+            relevance = float(max(0.0, min(1.0, t["relevance"])))
+            validated_tags.append({"tag": t["tag"], "relevance": relevance})
+
+    return {
+        "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
+        "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),
+        "calmness_score": float(max(0.0, min(1.0, parsed["calmness"]))),
+        "tags": validated_tags,
+        "why_this": str(parsed.get("why_this") or (item.title or "")[:220]),
+    }
+
+
+async def score_item(
+    item: RawItem, *, client: httpx.AsyncClient | None = None,
+) -> dict[str, float]:
     """
     Score a RawItem via LLM.
     Returns dict with keys: quality_score, authenticity_score,
     calmness_score, tags, why_this.
+    Accepts an optional shared httpx.AsyncClient for concurrent use.
     Raises: RuntimeError if LLM scoring fails or no API key is configured.
     """
     if not settings.has_openrouter:
-        raise RuntimeError(f"No OpenRouter key configured — cannot score {item.source_id}")
+        raise RuntimeError(
+            f"No OpenRouter key configured — cannot score {item.source_id}",
+        )
 
     prompt = SCORE_PROMPT.format(
         tag_list=_TAG_LIST,
@@ -71,41 +121,13 @@ async def score_item(item: RawItem) -> dict[str, float]:
     )
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{settings.openrouter_base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.openrouter_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.openrouter_model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.1,
-                    "max_tokens": 1024,
-                },
-            )
-            resp.raise_for_status()
-
-        content = resp.json()["choices"][0]["message"]["content"].strip()
-        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-        content = re.sub(r":\s*(\d+)-(\d+)", r": \1.\2", content)  # fix 0-5 → 0.5
-        parsed = json.loads(content)
-        raw_tags = parsed.get("tags", [])
-        seen: set[str] = set()
-        validated_tags = []
-        for t in raw_tags:
-            if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET and t["tag"] not in seen:
-                seen.add(t["tag"])
-                relevance = float(max(0.0, min(1.0, t["relevance"])))
-                validated_tags.append({"tag": t["tag"], "relevance": relevance})
-
-        return {
-            "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
-            "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),
-            "calmness_score": float(max(0.0, min(1.0, parsed["calmness"]))),
-            "tags": validated_tags,
-            "why_this": str(parsed.get("why_this") or (item.title or "")[:220]),
-        }
+        if client is not None:
+            resp = await _do_request(client, prompt)
+        else:
+            async with httpx.AsyncClient(timeout=30) as c:
+                resp = await _do_request(c, prompt)
+        return _parse_response(resp, item)
     except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:
-        raise RuntimeError(f"LLM scoring failed for {item.source_id}: {e}") from e
+        raise RuntimeError(
+            f"LLM scoring failed for {item.source_id}: {e}",
+        ) from e

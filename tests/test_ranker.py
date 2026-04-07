@@ -1,6 +1,7 @@
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
-from scoring.ranker import compute_rank, rank_items_for_user
+from scoring.ranker import _freshness_score, compute_rank, rank_items_for_user
 
 
 def make_user(*interests: str):
@@ -19,6 +20,7 @@ def make_item(
     author: str | None = None,
     body_text: str | None = None,
     metadata_json: dict | None = None,
+    published_at: datetime | None = None,
 ):
     return SimpleNamespace(
         source=source,
@@ -31,6 +33,8 @@ def make_item(
         authenticity_score=authenticity,
         calmness_score=calmness,
         content_type=content_type,
+        published_at=published_at or datetime.now(UTC),
+        ingested_at=datetime.now(UTC),
     )
 
 
@@ -103,6 +107,15 @@ def test_interest_overlap_zero_returns_low_rank():
     assert compute_rank(off_topic, user) < compute_rank(on_topic, user)
 
 
+def test_untagged_item_gets_small_nonzero_rank():
+    user = make_user("AI agents & automation")
+    item = make_item("rss", "Untagged post", metadata_json={})
+
+    rank = compute_rank(item, user)
+    assert rank > 0.0
+    assert rank < 0.1  # small exploration score, not dominant
+
+
 def test_tagged_item_with_matching_interest_scores_above_zero():
     user = make_user("AI agents & automation")
     item = make_item(
@@ -120,9 +133,9 @@ def test_no_interests_returns_full_quality_composite():
     user = make_user()
     item = make_item("rss", "Anything", quality=0.8, authenticity=0.8, calmness=0.8)
 
-    # _relevance_score returns 1.0 for users with no interests
-    # compute_rank = 1.0 * (0.5*0.8 + 0.3*0.8 + 0.2*0.8) = 0.8
-    assert compute_rank(item, user) == 0.8
+    # relevance=1.0, freshness≈1.0 (just created), quality_composite=0.8
+    rank = compute_rank(item, user)
+    assert 0.79 <= rank <= 0.8
 
 
 def test_rank_items_falls_back_to_all_when_filtered_pool_empty():
@@ -191,3 +204,23 @@ def test_adaptive_relaxation_fills_feed_with_default_target():
     ranked = rank_items_for_user(items, user)
 
     assert len(ranked) >= 8
+
+
+def test_newer_item_ranks_higher_than_older():
+    user = make_user()
+    new_item = make_item(
+        "rss", "Fresh post",
+        published_at=datetime.now(UTC),
+    )
+    old_item = make_item(
+        "rss", "Stale post",
+        published_at=datetime.now(UTC) - timedelta(days=14),
+    )
+
+    assert compute_rank(new_item, user) > compute_rank(old_item, user)
+
+
+def test_freshness_score_with_no_timestamp():
+    item = SimpleNamespace(published_at=None, ingested_at=None)
+
+    assert _freshness_score(item) == 0.5

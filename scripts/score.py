@@ -6,6 +6,9 @@ Railway: schedule after ingest (e.g. every 2 hours, offset by 30 min).
 import asyncio
 import logging
 
+import httpx
+
+from config.settings import get_settings
 from db.models import ContentItem
 from db.session import SessionLocal
 from ingestion.base import RawItem
@@ -18,19 +21,26 @@ BATCH_SIZE = 50
 
 
 async def run_scoring() -> None:
+    settings = get_settings()
+    sem = asyncio.Semaphore(settings.scoring_concurrency)
     db = SessionLocal()
     try:
         unscored = (
             db.query(ContentItem)
             .filter(ContentItem.quality_score.is_(None))
-            .order_by(ContentItem.published_at.desc().nullslast(), ContentItem.ingested_at.desc())
+            .order_by(
+                ContentItem.published_at.desc().nullslast(),
+                ContentItem.ingested_at.desc(),
+            )
             .limit(BATCH_SIZE)
             .all()
         )
         logger.info("Scoring %d unscored items", len(unscored))
+        if not unscored:
+            return
 
-        for item in unscored:
-            try:
+        async def score_one(item: ContentItem, client: httpx.AsyncClient):
+            async with sem:
                 raw = RawItem(
                     source=item.source,
                     source_id=item.source_id,
@@ -38,17 +48,27 @@ async def run_scoring() -> None:
                     title=item.title,
                     body_text=item.body_text,
                 )
-                scores = await score_item(raw)
-                item.quality_score = scores["quality_score"]
-                item.authenticity_score = scores["authenticity_score"]
-                item.calmness_score = scores["calmness_score"]
-                item.metadata_json = {
-                    **(item.metadata_json or {}),
-                    "why_this": scores.get("why_this", ""),
-                    "tags": scores.get("tags", []),
-                }
-            except Exception as e:
-                logger.error("Failed to score item %s: %s", item.source_id, e)
+                return item, await score_item(raw, client=client)
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            results = await asyncio.gather(
+                *(score_one(item, client) for item in unscored),
+                return_exceptions=True,
+            )
+
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error("Scoring failed: %s", result)
+                continue
+            item, scores = result
+            item.quality_score = scores["quality_score"]
+            item.authenticity_score = scores["authenticity_score"]
+            item.calmness_score = scores["calmness_score"]
+            item.metadata_json = {
+                **(item.metadata_json or {}),
+                "why_this": scores.get("why_this", ""),
+                "tags": scores.get("tags", []),
+            }
 
         db.commit()
         logger.info("Scoring complete")

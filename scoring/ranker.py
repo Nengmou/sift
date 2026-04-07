@@ -1,4 +1,5 @@
 """Combines LLM scores into a composite rank for a given user."""
+import math
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
@@ -54,7 +55,7 @@ def _relevance_score(item: ContentItem, user: User) -> float:
 
     tags = (item.metadata_json or {}).get("tags", [])[:3]
     if not tags:
-        return 0.0
+        return 0.05
     matched_relevance = sum(
         t["relevance"]
         for t in tags
@@ -63,22 +64,36 @@ def _relevance_score(item: ContentItem, user: User) -> float:
     return matched_relevance / len(tags)
 
 
+_FRESHNESS_HALF_LIFE_DAYS = 7.0
+
+
+def _freshness_score(item: ContentItem) -> float:
+    """Exponential decay: 1.0 today, ~0.5 at 7 days, ~0.25 at 14 days."""
+    ts = item.published_at or getattr(item, "ingested_at", None)
+    if ts is None:
+        return 0.5
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=UTC)
+    age_days = max(0.0, (datetime.now(UTC) - ts).total_seconds() / 86400)
+    return math.pow(0.5, age_days / _FRESHNESS_HALF_LIFE_DAYS)
+
+
 def compute_rank(item: ContentItem, user: User) -> float:
     """
     Composite rank score for `item` relative to `user`.
 
-    score = relevance × (0.5×authenticity + 0.3×calmness + 0.2×quality)
+    score = relevance × freshness × (0.5×auth + 0.3×calm + 0.2×quality)
 
-    Relevance is a multiplier: items with no interest match score 0 and
-    naturally fall out of the feed without needing an explicit filter.
-    Content quality weights reflect editorial bias toward authentic,
-    calm practitioner voices (authenticity > calmness > quality).
+    Relevance personalizes by interest. Freshness applies exponential
+    decay (7-day half-life). Quality weights reflect editorial bias
+    toward authentic, calm practitioner voices.
     """
     q = item.quality_score or 0.0
     a = item.authenticity_score or 0.0
     c = item.calmness_score or 0.0
     r = _relevance_score(item, user)
-    return round(r * (0.5 * a + 0.3 * c + 0.2 * q), 4)
+    f = _freshness_score(item)
+    return round(r * f * (0.5 * a + 0.3 * c + 0.2 * q), 4)
 
 
 def _apply_caps(
@@ -122,8 +137,8 @@ def _apply_caps(
 
 def fetch_candidates(db, lookback_days: int = 30, per_platform: int = 200) -> list[ContentItem]:
     """
-    Fetch candidate items for ranking: top-quality items per platform ingested
-    within `lookback_days`. Used by both the web feed and email digest.
+    Fetch candidate items for ranking: most recent scored items per
+    platform within `lookback_days`. Used by both web feed and email digest.
     """
     since = datetime.now(UTC) - timedelta(days=lookback_days)
     items_by_id: dict[str, ContentItem] = {}
@@ -135,7 +150,7 @@ def fetch_candidates(db, lookback_days: int = 30, per_platform: int = 200) -> li
                 ContentItem.published_at >= since,
                 ContentItem.source == source,
             )
-            .order_by(ContentItem.quality_score.desc())
+            .order_by(ContentItem.published_at.desc().nullslast())
             .limit(per_platform)
             .all()
         )

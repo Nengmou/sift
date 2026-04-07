@@ -20,3 +20,7 @@ def test_score_item_raises_without_api_key(monkeypatch):
 
     with pytest.raises(RuntimeError, match="No OpenRouter key configured"):
         asyncio.run(llm.score_item(item))
+
+    # Also works with an explicit client kwarg
+    with pytest.raises(RuntimeError, match="No OpenRouter key configured"):
+        asyncio.run(llm.score_item(item, client=None))
