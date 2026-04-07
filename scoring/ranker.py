@@ -1,9 +1,11 @@
 """Combines LLM scores into a composite rank for a given user."""
 import re
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 from config.sources import TAG_TO_INTEREST
 from db.models import ContentItem, User
+from ingestion.base import Source
 
 
 def _normalized_domain(url: str) -> str:
@@ -15,13 +17,13 @@ def _normalized_domain(url: str) -> str:
 
 
 def _publisher_key(item: ContentItem) -> str:
-    if item.source == "reddit":
+    if item.source == Source.REDDIT:
         subreddit = str(item.metadata_json.get("subreddit", "")).strip()
         return f"reddit:{subreddit or 'unknown'}"
-    if item.source == "youtube":
+    if item.source == Source.YOUTUBE:
         channel_id = str(item.metadata_json.get("channel_id", "")).strip()
         return f"youtube:{channel_id or 'unknown'}"
-    if item.source == "twitter":
+    if item.source == Source.TWITTER:
         author = (item.author or "").strip().lstrip("@").lower()
         return f"twitter:{author or 'unknown'}"
 
@@ -185,6 +187,30 @@ def _apply_caps(
             content_type_counts[content_type] = type_count + 1
 
     return ranked
+
+
+def fetch_candidates(db, lookback_days: int = 30, per_platform: int = 200) -> list[ContentItem]:
+    """
+    Fetch candidate items for ranking: top-quality items per platform ingested
+    within `lookback_days`. Used by both the web feed and email digest.
+    """
+    since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    items_by_id: dict[str, ContentItem] = {}
+    for source in Source:
+        batch = (
+            db.query(ContentItem)
+            .filter(
+                ContentItem.quality_score.isnot(None),
+                ContentItem.published_at >= since,
+                ContentItem.source == source,
+            )
+            .order_by(ContentItem.quality_score.desc())
+            .limit(per_platform)
+            .all()
+        )
+        for item in batch:
+            items_by_id[item.id] = item
+    return list(items_by_id.values())
 
 
 def rank_items_for_user(

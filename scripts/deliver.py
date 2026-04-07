@@ -4,37 +4,17 @@ Run: python -m scripts.deliver
 Railway: schedule every 15 minutes to catch all delivery time windows.
 """
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-from db.models import ContentItem, User
+from db.models import User
 from db.session import SessionLocal
 from delivery.email import send_digest
-from scoring.ranker import rank_items_for_user
+from scoring.ranker import fetch_candidates, rank_items_for_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CANDIDATE_POOL = 100  # items pulled from DB per user before ranking
-EMAIL_PICKS = 10      # items included in the final email
-LOOKBACK_DAYS = 7     # only consider items ingested in the last N days
-
-
-def _fetch_candidates(db, user: User) -> list[ContentItem]:
-    """
-    Pull top scored items from the last LOOKBACK_DAYS days.
-    Interest matching is handled entirely by the ranker, not here.
-    """
-    since = datetime.now(timezone.utc) - timedelta(days=LOOKBACK_DAYS)
-    return (
-        db.query(ContentItem)
-        .filter(
-            ContentItem.quality_score.isnot(None),
-            ContentItem.ingested_at >= since,
-        )
-        .order_by(ContentItem.quality_score.desc())
-        .limit(CANDIDATE_POOL)
-        .all()
-    )
+EMAIL_PICKS = 5    # items included in the final email
 
 
 def run_delivery() -> None:
@@ -48,7 +28,7 @@ def run_delivery() -> None:
 
         for user in users:
             try:
-                candidates = _fetch_candidates(db, user)
+                candidates = fetch_candidates(db)
                 ranked = rank_items_for_user(candidates, user)[:EMAIL_PICKS]
                 if ranked:
                     message_id = send_digest(user, ranked)

@@ -6,7 +6,7 @@ from email.utils import parsedate_to_datetime
 
 import feedparser
 
-from ingestion.base import BaseConnector, RawItem
+from ingestion.base import BaseConnector, RawItem, Source
 
 
 class RSSConnector(BaseConnector):
@@ -49,7 +49,7 @@ class RSSConnector(BaseConnector):
             body = entry.get("summary") or entry.get("content", [{}])[0].get("value")
 
             items.append(RawItem(
-                source="rss",
+                source=Source.RSS,
                 source_id=source_id,
                 url=link,
                 title=entry.get("title"),

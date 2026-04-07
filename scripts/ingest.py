@@ -13,6 +13,7 @@ from config.settings import get_settings
 from config.sources import RSS_FEEDS, SUBREDDITS, TWITTER_ACCOUNTS, YOUTUBE_CHANNEL_IDS
 from db.models import ContentItem
 from db.session import SessionLocal
+from ingestion.base import Source
 from ingestion.hn import HNConnector
 from ingestion.rss import RSSConnector
 from ingestion.reddit import RedditConnector
@@ -22,7 +23,7 @@ from ingestion.youtube import YouTubeConnector
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SUPPORTED_SOURCES = ("hn", "rss", "reddit", "twitter", "youtube")
+SUPPORTED_SOURCES = tuple(Source)
 
 RECENT_DEDUPE_WINDOW = 500
 TRACKING_PARAMS = {

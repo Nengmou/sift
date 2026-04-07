@@ -1,21 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Settings — Sift{% endblock %}
 {% block content %}
-<main>
-  <h2>Settings</h2>
-  <form method="post" action="/settings" style="margin-top: 1rem;">
+<div class="page">
+  <header class="site-header">
+    <span class="logo">Sift</span>
+    <nav>
+      <a href="/feed">Feed</a>
+    </nav>
+  </header>
 
-    <label for="delivery_time" style="display:block;margin-bottom:0.5rem;font-weight:600;">
-      Daily briefing time (UTC)
-    </label>
+  <h1>Settings</h1>
+  <form method="post" action="/settings">
+
+    <h2>Daily briefing time (UTC)</h2>
     <input type="time" id="delivery_time" name="delivery_time"
-           value="{{ user.delivery_time or '08:00' }}"
-           style="margin-bottom:1.5rem;" />
+           value="{{ user.delivery_time or '08:00' }}" />
 
-    <p style="font-weight:600;margin-bottom:0.5rem;">Interests</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.5rem;margin-bottom:1.5rem;">
+    <h2>Interests</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:0.5rem;margin-bottom:0.5rem;">
       {% for topic in topic_cards %}
-      <label style="display:flex;gap:0.5rem;align-items:center;cursor:pointer;">
+      <label style="display:flex;gap:0.5rem;align-items:center;cursor:pointer;font-size:0.875rem;color:var(--text-secondary);">
         <input type="checkbox" name="interests" value="{{ topic }}"
                {% if topic in user.interests %}checked{% endif %} />
         <span>{{ topic }}</span>
@@ -23,7 +27,7 @@
       {% endfor %}
     </div>
 
-    <button type="submit">Save settings</button>
+    <button type="submit" style="margin-top:1rem;">Save settings</button>
   </form>
-</main>
+</div>
 {% endblock %}

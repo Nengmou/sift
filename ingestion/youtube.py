@@ -8,7 +8,7 @@ import logging
 
 import httpx
 
-from ingestion.base import BaseConnector, RawItem
+from ingestion.base import BaseConnector, RawItem, Source
 
 BASE_URL = "https://www.googleapis.com/youtube/v3"
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class YouTubeConnector(BaseConnector):
                 )
 
             items.append(RawItem(
-                source="youtube",
+                source=Source.YOUTUBE,
                 source_id=video_id,
                 url=f"https://www.youtube.com/watch?v={video_id}",
                 title=snippet.get("title"),

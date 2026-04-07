@@ -7,7 +7,7 @@ from itertools import islice
 
 import httpx
 
-from ingestion.base import BaseConnector, RawItem
+from ingestion.base import BaseConnector, RawItem, Source
 
 BASE_URL = "https://api.twitter.com/2"
 MAX_USERNAMES_PER_QUERY = 20
@@ -75,7 +75,7 @@ class TwitterConnector(BaseConnector):
                     tweet["created_at"].replace("Z", "+00:00")
                 )
             items.append(RawItem(
-                source="twitter",
+                source=Source.TWITTER,
                 source_id=tweet["id"],
                 url=f"https://twitter.com/i/web/status/{tweet['id']}",
                 title=None,

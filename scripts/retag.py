@@ -24,21 +24,20 @@ BATCH_SIZE = 50
 
 _TAG_LIST = ", ".join(TAG_VOCABULARY)
 
-RETAG_PROMPT = """Given this content, assign 0–5 tags from this list with relevance scores:
-{tag_list}
+RETAG_PROMPT = """Pick the TOP 3 most relevant tags for this content from the list below. Maximum 3 tags, minimum 0.
+Base your tags on what is explicitly stated in the title and body.
 
-For each matching tag assign a relevance score 0.0–1.0:
-  1.0 = primary focus of the content
-  0.5 = clearly covered but not the main focus
-  0.2 = briefly mentioned or tangential
+Tags: {tag_list}
+
+Relevance score: 1.0=main topic, 0.5=clearly covered, 0.2=briefly mentioned.
 
 Source: {source}
 Title: {title}
-Body (first 500 chars): {body}
+Body: {body}
 
-Respond with ONLY valid JSON — no markdown, no explanation:
-{{"tags": [{{"tag": "tag name", "relevance": float}}]}}
-Return {{"tags": []}} if no tags apply.
+Respond with ONLY valid JSON: {{"tags": [{{"tag": "...", "relevance": float}}]}}
+If nothing matches: {{"tags": []}}
+/no_think
 """
 
 
@@ -60,19 +59,22 @@ async def _classify_tags(item: ContentItem, client: httpx.AsyncClient) -> list[d
                 "model": settings.openrouter_model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.1,
-                "max_tokens": 400,
+                "max_tokens": 1024,
             },
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"].strip()
         content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+        content = re.sub(r":\s*(\d+)-(\d+)", r": \1.\2", content)  # fix 0-5 → 0.5
         parsed = json.loads(content)
         raw_tags = parsed.get("tags", [])
-        return [
-            {"tag": t["tag"], "relevance": float(max(0.0, min(1.0, t["relevance"])))}
-            for t in raw_tags
-            if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET
-        ]
+        seen: set[str] = set()
+        validated = []
+        for t in raw_tags:
+            if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET and t["tag"] not in seen:
+                seen.add(t["tag"])
+                validated.append({"tag": t["tag"], "relevance": float(max(0.0, min(1.0, t["relevance"])))})
+        return validated
     except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:
         logger.warning("Tag classification failed for %s: %s", item.source_id, e)
         return []

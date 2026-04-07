@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta, timezone
-
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -8,15 +6,27 @@ from sqlalchemy.orm import Session
 from api.deps import get_current_user
 from db.models import ContentItem, Interaction, User
 from db.session import get_db
-from scoring.ranker import rank_items_for_user
+from scoring.ranker import fetch_candidates, rank_items_for_user
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="web/templates")
 
 TOPIC_CARDS = [
-    "LLM infrastructure", "AI agents", "MLOps", "Prompt engineering",
-    "Frontend development", "Systems design", "Data engineering",
-    "AI for productivity", "Open-source models", "Evaluation and testing",
+    # AI & Machine Learning
+    "Foundation models & LLMs", "Open-source AI", "Multimodal AI",
+    "AI research & papers", "Evaluation & benchmarks",
+    "AI agents & automation", "AI infrastructure & compute", "Training & fine-tuning",
+    "MLOps & deployment", "Data & knowledge", "AI tools & productivity",
+    "Creative AI", "AI in science", "Robotics & embodied AI",
+    "AI safety & alignment", "AI policy & regulation", "AI economics & society",
+    "AI in business & industry", "Prompt engineering & AI UX", "AI hardware & chips",
+    # General Interest
+    "Software engineering", "Cybersecurity", "Cloud computing",
+    "Space & astronomy", "Biotech & life sciences", "Climate & environment",
+    "Startups & venture capital", "Career & professional growth",
+    "Personal finance & investing", "Economics & markets",
+    "Geopolitics & international affairs", "Health & wellness",
+    "Education & learning", "Design & creativity", "Science & research",
 ]
 
 
@@ -33,25 +43,7 @@ def feed(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    since = datetime.now(timezone.utc) - timedelta(days=30)
-    per_platform = 200
-    sources = ["rss", "reddit", "hn", "youtube", "twitter"]
-    items_by_id: dict[str, ContentItem] = {}
-    for source in sources:
-        batch = (
-            db.query(ContentItem)
-            .filter(
-                ContentItem.quality_score.is_not(None),
-                ContentItem.published_at >= since,
-                ContentItem.source == source,
-            )
-            .order_by(ContentItem.published_at.desc())
-            .limit(per_platform)
-            .all()
-        )
-        for item in batch:
-            items_by_id[item.id] = item
-    items = list(items_by_id.values())
+    items = fetch_candidates(db)
     ranked = rank_items_for_user(items, user)
     return templates.TemplateResponse(
         request, "feed.html", {"user": user, "items": ranked[:20]}

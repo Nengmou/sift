@@ -13,7 +13,7 @@ import httpx
 
 from config.settings import get_settings
 from config.sources import TAG_VOCABULARY, TAG_VOCABULARY_SET
-from ingestion.base import RawItem
+from ingestion.base import RawItem, Source
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -34,13 +34,11 @@ Score the following content on three dimensions, each as a float between 0.0 and
    0 = highly anxiety-inducing (urgency, doom, outrage, FOMO).
    1 = calm, constructive, informative without stress.
 
-4. tags: List of 0–5 tags this content covers, chosen ONLY from this list:
+4. tags: Pick the TOP 3 most relevant tags ONLY from this list (maximum 3, minimum 0):
    {tag_list}
-   For each matching tag assign a relevance score 0.0–1.0:
-     1.0 = primary focus of the content
-     0.5 = clearly covered but not the main focus
-     0.2 = briefly mentioned or tangential
-   Return [] if no tags apply.
+   Base your tags on what is explicitly stated in the title and body.
+   Relevance: 1.0=main topic, 0.5=clearly covered, 0.2=briefly mentioned.
+   Return [] if nothing matches.
 
 Respond with ONLY valid JSON — no markdown, no explanation:
 {{"quality": float, "authenticity": float, "calmness": float, "tags": [{{"tag": "tag name", "relevance": float}}], "why_this": "1-2 sentence user-facing summary"}}
@@ -49,6 +47,7 @@ Content to evaluate:
 Source: {source}
 Title: {title}
 Body (first 500 chars): {body}
+/no_think
 """
 
 # Heuristic fallback used when no OpenRouter key is configured
@@ -77,9 +76,9 @@ def _fallback_scores(item: RawItem) -> dict[str, float]:
     quality = 0.55 + 0.06 * sum(1 for s in _POSITIVE_SIGNALS if s in text)
     authenticity = 0.5 + 0.10 * sum(1 for s in _AUTHENTIC_SIGNALS if s in text)
     calmness = 0.7 - 0.12 * sum(1 for s in _ANXIETY_SIGNALS if s in text)
-    if item.source == "rss":
+    if item.source == Source.RSS:
         authenticity += 0.05
-    if item.source == "hn":
+    if item.source == Source.HN:
         quality += 0.05
     return {
         "quality_score": float(max(0.0, min(1.0, quality))),
@@ -118,20 +117,23 @@ async def score_item(item: RawItem) -> dict[str, float]:
                     "model": settings.openrouter_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.1,
-                    "max_tokens": 300,
+                    "max_tokens": 1024,
                 },
             )
             resp.raise_for_status()
 
         content = resp.json()["choices"][0]["message"]["content"].strip()
         content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+        content = re.sub(r":\s*(\d+)-(\d+)", r": \1.\2", content)  # fix 0-5 → 0.5
         parsed = json.loads(content)
         raw_tags = parsed.get("tags", [])
-        validated_tags = [
-            {"tag": t["tag"], "relevance": float(max(0.0, min(1.0, t["relevance"])))}
-            for t in raw_tags
-            if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET
-        ]
+        seen: set[str] = set()
+        validated_tags = []
+        for t in raw_tags:
+            if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET and t["tag"] not in seen:
+                seen.add(t["tag"])
+                validated_tags.append({"tag": t["tag"], "relevance": float(max(0.0, min(1.0, t["relevance"])))})
+
         return {
             "quality_score": float(max(0.0, min(1.0, parsed["quality"]))),
             "authenticity_score": float(max(0.0, min(1.0, parsed["authenticity"]))),

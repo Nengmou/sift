@@ -3,7 +3,7 @@ import asyncio
 
 import httpx
 
-from ingestion.base import BaseConnector, RawItem
+from ingestion.base import BaseConnector, RawItem, Source
 
 BASE_URL = "https://hacker-news.firebaseio.com/v0"
 
@@ -43,7 +43,7 @@ class HNConnector(BaseConnector):
             )
 
         return RawItem(
-            source="hn",
+            source=Source.HN,
             source_id=str(data["id"]),
             url=data.get("url") or f"https://news.ycombinator.com/item?id={data['id']}",
             title=data.get("title"),

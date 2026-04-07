@@ -1,30 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Your Feed — Sift{% endblock %}
 {% block content %}
-<main>
-  <h1>Good morning, {{ user.name or user.email }}</h1>
+<div class="page">
+  <header class="site-header">
+    <span class="logo">Sift</span>
+    <nav>
+      <a href="/settings">Settings</a>
+    </nav>
+  </header>
+
+  <p class="feed-heading">Good morning, {{ user.name or user.email.split("@")[0] }}</p>
+  <p class="feed-subheading">Your top picks, ranked by quality and relevance.</p>
+
   {% if items %}
+  <div class="feed">
     {% for item in items %}
-    <article>
-      <a href="/click/{{ item.id }}" target="_blank" rel="noopener">{{ item.title or "(no title)" }}</a>
-      <p class="meta">
-        {{ item.source }}
-        {% if item.author %}· {{ item.author }}{% endif %}
-        {% if item.published_at %}· {{ item.published_at.strftime("%b %d") }}{% endif %}
-      </p>
-      {% if item.metadata_json.get("why_this") %}
-      <p style="color:#374151;font-size:0.92rem;margin-top:0.35rem;">
-        <strong>Why this:</strong> {{ item.metadata_json.get("why_this") }}
-      </p>
-      {% elif item.body_text %}
-      <p style="color:#4b5563;font-size:0.9rem;margin-top:0.25rem;">
-        {{ item.body_text[:200] }}{% if item.body_text|length > 200 %}…{% endif %}
-      </p>
+    <div class="card">
+      <div class="card-title">
+        <a href="/click/{{ item.id }}" target="_blank" rel="noopener">{{ item.title or "(no title)" }}</a>
+      </div>
+      <div class="card-meta">
+        <span class="badge badge-{{ item.source }}">{{ item.source }}</span>
+        {% if item.author %}
+          <span class="meta-dot">·</span>
+          <span class="card-author">{{ item.author }}</span>
+        {% endif %}
+        {% if item.published_at %}
+          <span class="meta-dot">·</span>
+          <span class="card-date">{{ item.published_at.strftime("%b %d") }}</span>
+        {% endif %}
+      </div>
+      {% set summary = item.metadata_json.get("why_this") if item.metadata_json else None %}
+      {% if not summary and item.body_text %}
+        {% set summary = item.body_text[:180] + ("…" if item.body_text|length > 180 else "") %}
       {% endif %}
-    </article>
+      {% if summary %}
+      <p class="card-summary">{{ summary }}</p>
+      {% endif %}
+      {% set tags = item.metadata_json.get("tags", []) if item.metadata_json else [] %}
+      {% if tags %}
+      <div class="card-tags">
+        {% for t in tags %}
+        <span class="tag">{{ t.tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
     {% endfor %}
+  </div>
   {% else %}
-    <p style="color: #6b7280; margin-top: 2rem;">Your feed is being prepared. Check back soon.</p>
+  <div class="empty-state">
+    <p>Your feed is being prepared. Check back soon.</p>
+  </div>
   {% endif %}
-</main>
+</div>
 {% endblock %}

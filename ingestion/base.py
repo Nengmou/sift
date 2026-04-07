@@ -1,13 +1,22 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
+
+
+class Source(StrEnum):
+    HN      = "hn"
+    RSS     = "rss"
+    REDDIT  = "reddit"
+    TWITTER = "twitter"
+    YOUTUBE = "youtube"
 
 
 @dataclass
 class RawItem:
     """Normalized item returned by any connector before DB persistence."""
-    source: str           # matches SourceEnum: hn/rss/reddit/twitter/youtube
+    source: str           # Source enum value
     source_id: str        # unique identifier within that source
     url: str
     title: str | None = None

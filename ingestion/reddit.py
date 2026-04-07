@@ -3,7 +3,7 @@ import datetime
 
 import httpx
 
-from ingestion.base import BaseConnector, RawItem
+from ingestion.base import BaseConnector, RawItem, Source
 
 BASE_URL = "https://www.reddit.com"
 HEADERS = {"User-Agent": "sift/0.1 (authentic content discovery)"}
@@ -46,7 +46,7 @@ class RedditConnector(BaseConnector):
         content_type = "post" if is_self else "article"
 
         return RawItem(
-            source="reddit",
+            source=Source.REDDIT,
             source_id=post["id"],
             url=url,
             title=post.get("title"),
