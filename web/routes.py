@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -43,10 +45,12 @@ def feed(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    hour = datetime.now().hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
     items = fetch_candidates(db)
     ranked = rank_items_for_user(items, user)
     return templates.TemplateResponse(
-        request, "feed.html", {"user": user, "items": ranked[:20]}
+        request, "feed.html", {"user": user, "items": ranked[:20], "greeting": greeting}
     )
 
 

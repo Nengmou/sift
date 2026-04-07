@@ -3,39 +3,46 @@
 {% block content %}
 <div class="page">
   <header class="site-header">
-    <span class="logo">Sift</span>
+    <div class="header-left">
+      <span class="logo">Sift</span>
+      <span class="header-divider"></span>
+      <span class="header-greeting">{{ greeting }}, {{ user.name or user.email.split("@")[0] }}</span>
+    </div>
     <nav>
-      <a href="/settings">Settings</a>
+      <a href="/settings" class="settings-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </a>
     </nav>
   </header>
 
-  <p class="feed-heading">Good morning, {{ user.name or user.email.split("@")[0] }}</p>
-  <p class="feed-subheading">Your top picks, ranked by quality and relevance.</p>
+  <div class="feed-hero">
+    <p class="feed-subheading">Signal over noise. Calm over hype.</p>
+  </div>
 
   {% if items %}
   <div class="feed">
     {% for item in items %}
-    <div class="card">
-      <div class="card-title">
-        <a href="/click/{{ item.id }}" target="_blank" rel="noopener">{{ item.title or "(no title)" }}</a>
-      </div>
+    <article class="card">
       <div class="card-meta">
         <span class="badge badge-{{ item.source }}">{{ item.source }}</span>
         {% if item.author %}
-          <span class="meta-dot">·</span>
+          <span class="meta-sep">&middot;</span>
           <span class="card-author">{{ item.author }}</span>
         {% endif %}
         {% if item.published_at %}
-          <span class="meta-dot">·</span>
-          <span class="card-date">{{ item.published_at.strftime("%b %d") }}</span>
+          <span class="meta-sep">&middot;</span>
+          <time class="card-date">{{ item.published_at.strftime("%b %d") }}</time>
         {% endif %}
       </div>
+      <h2 class="card-title">
+        <a href="/click/{{ item.id }}" target="_blank" rel="noopener">{{ item.title or "(no title)" }}</a>
+      </h2>
       {% set summary = item.metadata_json.get("why_this") if item.metadata_json else None %}
       {% if not summary and item.body_text %}
         {% set summary = item.body_text[:180] + ("…" if item.body_text|length > 180 else "") %}
       {% endif %}
       {% if summary %}
-      <p class="card-summary">{{ summary }}</p>
+      <p class="card-summary">{{ summary | striptags }}</p>
       {% endif %}
       {% set tags = item.metadata_json.get("tags", []) if item.metadata_json else [] %}
       {% if tags %}
@@ -45,7 +52,7 @@
         {% endfor %}
       </div>
       {% endif %}
-    </div>
+    </article>
     {% endfor %}
   </div>
   {% else %}
