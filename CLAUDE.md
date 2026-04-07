@@ -95,9 +95,11 @@ toward authentic builders over pundits and engagement farmers.
 
 Composite rank (see `scoring/ranker.py`):
 ```
-score = quality×0.4 + authenticity×0.3 + calmness×0.3
-      + interest_overlap×0.35  (applied when user has interests and overlap > 0)
+score = relevance × (authenticity×0.5 + calmness×0.3 + quality×0.2)
 ```
+Relevance is a multiplier derived from LLM tag–to–interest matching (0–1). Items with
+no interest match score 0 and naturally fall out. For untagged items, token overlap
+against interest labels is used as the relevance proxy.
 
 Diversity caps enforce max 3 items per platform and max 2 per publisher in the final list.
 

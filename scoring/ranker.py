@@ -1,5 +1,4 @@
 """Combines LLM scores into a composite rank for a given user."""
-import re
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
@@ -40,114 +39,46 @@ def _available_source_count(items: list[ContentItem]) -> int:
     return len({item.source for item in items})
 
 
-def _tokenize_interest(text: str) -> set[str]:
-    tokens = {
-        token
-        for token in re.findall(r"[a-z0-9]+", text.lower())
-        if len(token) >= 3
-    }
-    normalized: set[str] = set()
-    for token in tokens:
-        normalized.add(token)
-        if token.endswith("s") and len(token) > 4:
-            normalized.add(token[:-1])
-    return normalized
 
+def _relevance_score(item: ContentItem, user: User) -> float:
+    """
+    Relevance of the item to the user's interests, as a float in [0, 1].
 
-def _token_overlap_score(item: ContentItem, user: User) -> float:
-    """Keyword/token-based fallback for items without LLM tags."""
-    interests = [interest.lower().strip() for interest in user.interests if interest.strip()]
-    if not interests:
-        return 0.5
-
-    haystack = " ".join(
-        filter(
-            None,
-            [
-                item.title or "",
-                item.body_text or "",
-                item.author or "",
-                str(item.metadata_json.get("subreddit", "")),
-                str(item.metadata_json.get("feed_url", "")),
-            ],
-        )
-    ).lower()
-
-    exact_matches = sum(1 for interest in interests if interest in haystack)
-    if exact_matches:
-        return min(1.0, 0.65 + 0.2 * exact_matches)
-
-    haystack_tokens = _tokenize_interest(haystack)
-    if not haystack_tokens:
-        return 0.0
-
-    overlap_scores: list[float] = []
-    for interest in interests:
-        interest_tokens = _tokenize_interest(interest)
-        if not interest_tokens:
-            continue
-        overlap = len(interest_tokens & haystack_tokens) / len(interest_tokens)
-        overlap_scores.append(overlap)
-
-    if not overlap_scores:
-        return 0.0
-
-    best_overlap = max(overlap_scores)
-    if best_overlap >= 0.5:
-        return min(0.75, 0.35 + best_overlap * 0.5)
-    if best_overlap > 0.0:
-        return min(0.4, best_overlap * 0.4)
-    return 0.0
-
-
-def _interest_overlap_score(item: ContentItem, user: User) -> float:
+    Sums the LLM-assigned relevance scores of tags that map to a user interest,
+    capped at 1.0. Items with no matching tags score 0.
+    When the user has no interests configured, return 1.0 (show everything).
+    """
     interests = {i.lower().strip() for i in user.interests if i.strip()}
     if not interests:
-        return 0.5
+        return 1.0
 
-    tags = (item.metadata_json or {}).get("tags", [])
-    if tags:
-        # Weight by relevance — sum relevance scores for tags that map to user interests
-        score = sum(
-            t["relevance"]
-            for t in tags
-            if isinstance(t, dict) and TAG_TO_INTEREST.get(t.get("tag", ""), "").lower() in interests
-        )
-        if score == 0:
-            return 0.05  # tagged but no match — allow exploration path
-        return min(1.0, 0.5 + score * 0.3)  # score=1.0 → 0.8, score=2.0 → 1.0
-
-    # Fall back to token matching for untagged items
-    return _token_overlap_score(item, user)
-
-
-def _exploration_score(item: ContentItem) -> float:
-    q = item.quality_score or 0.0
-    a = item.authenticity_score or 0.0
-    c = item.calmness_score or 0.0
-    return round(a * 0.45 + c * 0.35 + q * 0.2, 4)
+    tags = (item.metadata_json or {}).get("tags", [])[:3]
+    if not tags:
+        return 0.0
+    matched_relevance = sum(
+        t["relevance"]
+        for t in tags
+        if isinstance(t, dict) and TAG_TO_INTEREST.get(t.get("tag", ""), "").lower() in interests
+    )
+    return matched_relevance / len(tags)
 
 
 def compute_rank(item: ContentItem, user: User) -> float:
     """
     Composite rank score for `item` relative to `user`.
 
-    Weights (tune based on early user feedback):
-      quality_score      0.4  — depth and value
-      authenticity_score 0.3  — real practitioner voice
-      calmness_score     0.3  — calm framing (higher = calmer)
+    score = relevance × (0.5×authenticity + 0.3×calmness + 0.2×quality)
 
-    The base weights intentionally sum to 0.92 instead of 1.0 so there is
-    explicit headroom for the exploration bonus on calm, authentic adjacent items.
+    Relevance is a multiplier: items with no interest match score 0 and
+    naturally fall out of the feed without needing an explicit filter.
+    Content quality weights reflect editorial bias toward authentic,
+    calm practitioner voices (authenticity > calmness > quality).
     """
     q = item.quality_score or 0.0
     a = item.authenticity_score or 0.0
     c = item.calmness_score or 0.0
-    r = _interest_overlap_score(item, user)
-    exploration = _exploration_score(item)
-    base_score = q * 0.3 + a * 0.24 + c * 0.2 + r * 0.18
-    exploration_bonus = (1.0 - min(1.0, r)) * exploration * 0.08
-    return round(base_score + exploration_bonus, 4)
+    r = _relevance_score(item, user)
+    return round(r * (0.5 * a + 0.3 * c + 0.2 * q), 4)
 
 
 def _apply_caps(
@@ -237,17 +168,7 @@ def rank_items_for_user(
     elif available_sources == 2:
         effective_max_per_platform = max(max_per_platform, 10)
 
-    min_relevance = 0.05 if user.interests else 0.0
-    filtered_items = [
-        item for item in items
-        if (
-            _interest_overlap_score(item, user) >= min_relevance
-            or _exploration_score(item) >= 0.72
-        )
-    ]
-    candidate_items = filtered_items or items
-
-    scored_items = sorted(candidate_items, key=lambda i: compute_rank(i, user), reverse=True)
+    scored_items = sorted(items, key=lambda i: compute_rank(i, user), reverse=True)
     strategies = [
         (effective_max_per_platform, max_per_publisher, shortlist_max_per_publisher),
         (effective_max_per_platform + 1, max_per_publisher, shortlist_max_per_publisher),
