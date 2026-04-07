@@ -1,4 +1,6 @@
-from datetime import datetime
+import html
+import re
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -12,6 +14,46 @@ from scoring.ranker import fetch_candidates, rank_items_for_user
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="web/templates")
+
+
+def _strip_urls(text: str) -> str:
+    """Remove t.co tracking URLs and collapse extra whitespace."""
+    text = re.sub(r"https?://t\.co/\S+", "", text)
+    return re.sub(r"  +", " ", text).strip()
+
+
+def _timeago(dt: datetime | None) -> str:
+    """Convert a datetime to a relative time string."""
+    if dt is None:
+        return ""
+    now = datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    delta = now - dt
+    seconds = int(delta.total_seconds())
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{seconds // 60}m ago"
+    if seconds < 86400:
+        return f"{seconds // 3600}h ago"
+    days = seconds // 86400
+    if days < 30:
+        return f"{days}d ago"
+    if days < 365:
+        months = days // 30
+        return f"{months}mo ago"
+    return f"{days // 365}y ago"
+
+
+def _unescape(text: str) -> str:
+    """Decode HTML entities like &amp; → &."""
+    return html.unescape(text)
+
+
+templates.env.filters["strip_urls"] = _strip_urls
+templates.env.filters["timeago"] = _timeago
+templates.env.filters["unescape"] = _unescape
 
 TOPIC_CARDS = [
     # AI & Machine Learning

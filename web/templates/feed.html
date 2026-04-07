@@ -22,28 +22,53 @@
   {% if items %}
   <div class="feed">
     {% for item in items %}
-    <article class="card">
+    {# ── Resolve thumbnail URL from any source ── #}
+    {% set thumb_url = namespace(val=None) %}
+    {% if item.metadata_json %}
+      {% if item.metadata_json.get("thumbnail_url") %}
+        {% set thumb_url.val = item.metadata_json.thumbnail_url %}
+      {% elif item.metadata_json.get("thumbnail") and item.metadata_json.thumbnail is mapping %}
+        {% set yt = item.metadata_json.thumbnail.get("medium") or item.metadata_json.thumbnail.get("default") or {} %}
+        {% set thumb_url.val = yt.get("url") %}
+      {% endif %}
+    {% endif %}
+    {% set has_thumb = thumb_url.val is not none %}
+    <article class="card{% if has_thumb %} card--has-thumb{% endif %}">
+      <div class="card-body">
+
+      {# ── Meta row ── #}
       <div class="card-meta">
         <span class="badge badge-{{ item.source }}">{{ item.source }}</span>
+        {# Subreddit for Reddit #}
+        {% if item.source == "reddit" and item.metadata_json and item.metadata_json.get("subreddit") %}
+          <span class="card-subreddit">r/{{ item.metadata_json.subreddit }}</span>
+        {% endif %}
         {% if item.author %}
           <span class="meta-sep">&middot;</span>
           <span class="card-author">{{ item.author }}</span>
         {% endif %}
         {% if item.published_at %}
           <span class="meta-sep">&middot;</span>
-          <time class="card-date">{{ item.published_at.strftime("%b %d") }}</time>
+          <time class="card-date">{{ item.published_at | timeago }}</time>
         {% endif %}
       </div>
+
+      {# ── Title + summary (articles) or tweet body ── #}
+      {% if item.title %}
       <h2 class="card-title">
-        <a href="/click/{{ item.id }}" target="_blank" rel="noopener">{{ item.title or "(no title)" }}</a>
+        <a href="/click/{{ item.id }}" target="_blank" rel="noopener">{{ item.title | unescape }}</a>
       </h2>
-      {% set summary = item.metadata_json.get("why_this") if item.metadata_json else None %}
-      {% if not summary and item.body_text %}
+      {% if item.body_text and item.body_text.strip() != item.title.strip() %}
         {% set summary = item.body_text[:180] + ("…" if item.body_text|length > 180 else "") %}
-      {% endif %}
-      {% if summary %}
       <p class="card-summary">{{ summary | striptags }}</p>
       {% endif %}
+      {% else %}
+      <a href="/click/{{ item.id }}" target="_blank" rel="noopener" class="card-tweet">
+        {{ item.body_text[:280] | striptags | strip_urls }}{% if item.body_text and item.body_text|length > 280 %}…{% endif %}
+      </a>
+      {% endif %}
+
+      {# ── Tags ── #}
       {% set tags = item.metadata_json.get("tags", []) if item.metadata_json else [] %}
       {% if tags %}
       <div class="card-tags">
@@ -51,6 +76,18 @@
         <span class="tag">{{ t.tag }}</span>
         {% endfor %}
       </div>
+      {% endif %}
+      </div>
+      {# ── Thumbnail (inline right) ── #}
+      {% if has_thumb %}
+        <a href="/click/{{ item.id }}" target="_blank" rel="noopener" class="card-thumb">
+          <img src="{{ thumb_url.val }}" alt="" loading="lazy" />
+          {% if item.source == "youtube" %}
+          <span class="card-thumb-play">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </span>
+          {% endif %}
+        </a>
       {% endif %}
     </article>
     {% endfor %}

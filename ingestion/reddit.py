@@ -45,6 +45,14 @@ class RedditConnector(BaseConnector):
         url = post.get("url", "")
         content_type = "post" if is_self else "article"
 
+        # Extract preview image URL
+        thumbnail_url = None
+        preview_images = post.get("preview", {}).get("images", [])
+        if preview_images:
+            thumbnail_url = preview_images[0].get("source", {}).get("url")
+            if thumbnail_url:
+                thumbnail_url = thumbnail_url.replace("&amp;", "&")
+
         return RawItem(
             source=Source.REDDIT,
             source_id=post["id"],
@@ -59,5 +67,6 @@ class RedditConnector(BaseConnector):
                 "score": post.get("score", 0),
                 "num_comments": post.get("num_comments", 0),
                 "permalink": f"https://reddit.com{post.get('permalink', '')}",
+                "thumbnail_url": thumbnail_url,
             },
         )

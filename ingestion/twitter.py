@@ -53,9 +53,10 @@ class TwitterConnector(BaseConnector):
         params = {
             "query": query,
             "max_results": max_results,
-            "tweet.fields": "author_id,created_at,public_metrics,entities",
-            "expansions": "author_id",
+            "tweet.fields": "author_id,created_at,public_metrics,entities,attachments",
+            "expansions": "author_id,attachments.media_keys",
             "user.fields": "name,username",
+            "media.fields": "preview_image_url,url,type",
         }
         resp = await client.get(
             f"{BASE_URL}/tweets/search/recent",
@@ -65,7 +66,10 @@ class TwitterConnector(BaseConnector):
         resp.raise_for_status()
         data = resp.json()
 
-        users = {u["id"]: u for u in data.get("includes", {}).get("users", [])}
+        includes = data.get("includes", {})
+        users = {u["id"]: u for u in includes.get("users", [])}
+        media_map = {m["media_key"]: m for m in includes.get("media", [])}
+
         items = []
         for tweet in data.get("data", []):
             author = users.get(tweet.get("author_id"), {})
@@ -74,6 +78,16 @@ class TwitterConnector(BaseConnector):
                 published_at = datetime.datetime.fromisoformat(
                     tweet["created_at"].replace("Z", "+00:00")
                 )
+
+            # Extract first image from tweet media attachments
+            thumbnail_url = None
+            media_keys = tweet.get("attachments", {}).get("media_keys", [])
+            for key in media_keys:
+                media = media_map.get(key, {})
+                thumbnail_url = media.get("preview_image_url") or media.get("url")
+                if thumbnail_url:
+                    break
+
             items.append(RawItem(
                 source=Source.TWITTER,
                 source_id=tweet["id"],
@@ -83,7 +97,10 @@ class TwitterConnector(BaseConnector):
                 body_text=tweet.get("text"),
                 published_at=published_at,
                 content_type="thread",
-                metadata={"public_metrics": tweet.get("public_metrics", {})},
+                metadata={
+                    "public_metrics": tweet.get("public_metrics", {}),
+                    "thumbnail_url": thumbnail_url,
+                },
             ))
         return items
 

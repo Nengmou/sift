@@ -140,6 +140,79 @@ a:hover { text-decoration: underline; }
   text-decoration: none;
 }
 
+.card-tweet {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-left: 3px solid var(--border);
+  padding-left: 0.85rem;
+}
+
+.card-tweet:hover {
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+/* ── Card with thumbnail (YouTube) ── */
+.card--has-thumb {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.card--has-thumb .card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 140px;
+  height: 88px;
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 0;
+  margin-top: 1.65rem;
+}
+
+.card-thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.card-thumb-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1.75rem;
+  height: 1.75rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background 0.15s;
+}
+
+.card-thumb:hover .card-thumb-play {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ── Subreddit label ── */
+.card-subreddit {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .card-meta {
   display: flex;
   align-items: center;
@@ -175,7 +248,7 @@ a:hover { text-decoration: underline; }
 
 .card-summary {
   margin-top: 0.45rem;
-  font-size: 0.87rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   line-height: 1.6;
 }
@@ -183,18 +256,23 @@ a:hover { text-decoration: underline; }
 .card-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.7rem;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 .tag {
-  font-size: 0.68rem;
-  font-weight: 500;
-  padding: 0.22rem 0.6rem;
-  border-radius: 6px;
-  background: #f3f3f0;
-  color: #8a8a84;
+  font-size: 0.66rem;
+  font-weight: 400;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
   letter-spacing: 0.01em;
+}
+
+.tag::before {
+  content: "#";
+  opacity: 0.5;
 }
 
 .empty-state {

@@ -4,6 +4,7 @@ import asyncio
 import httpx
 
 from ingestion.base import BaseConnector, RawItem, Source
+from ingestion.og_image import fetch_og_image
 
 BASE_URL = "https://hacker-news.firebaseio.com/v0"
 
@@ -42,10 +43,17 @@ class HNConnector(BaseConnector):
                 data["time"], tz=datetime.timezone.utc
             )
 
+        url = data.get("url") or f"https://news.ycombinator.com/item?id={data['id']}"
+
+        # Fetch og:image for external links (skip HN self-posts)
+        thumbnail_url = None
+        if url and "news.ycombinator.com" not in url:
+            thumbnail_url = await fetch_og_image(client, url)
+
         return RawItem(
             source=Source.HN,
             source_id=str(data["id"]),
-            url=data.get("url") or f"https://news.ycombinator.com/item?id={data['id']}",
+            url=url,
             title=data.get("title"),
             author=data.get("by"),
             body_text=data.get("text"),
@@ -54,5 +62,6 @@ class HNConnector(BaseConnector):
             metadata={
                 "score": data.get("score", 0),
                 "descendants": data.get("descendants", 0),
+                "thumbnail_url": thumbnail_url,
             },
         )
