@@ -4,7 +4,7 @@ Run: python -m scripts.deliver
 Railway: schedule every 15 minutes to catch all delivery time windows.
 """
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from db.models import User
 from db.session import SessionLocal
@@ -19,7 +19,7 @@ EMAIL_PICKS = 5    # items included in the final email
 
 def run_delivery() -> None:
     db = SessionLocal()
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.now(UTC)
     current_hhmm = now_utc.strftime("%H:%M")
 
     try:
@@ -32,7 +32,10 @@ def run_delivery() -> None:
                 ranked = rank_items_for_user(candidates, user)[:EMAIL_PICKS]
                 if ranked:
                     message_id = send_digest(user, ranked)
-                    logger.info("Delivered to %s (%d items) — %s", user.email, len(ranked), message_id)
+                    logger.info(
+                        "Delivered to %s (%d items) — %s",
+                        user.email, len(ranked), message_id,
+                    )
                 else:
                     logger.warning("No ranked items for %s — skipping", user.email)
             except Exception as e:

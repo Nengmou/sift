@@ -1,5 +1,5 @@
 """Combines LLM scores into a composite rank for a given user."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
 from config.sources import TAG_TO_INTEREST
@@ -125,7 +125,7 @@ def fetch_candidates(db, lookback_days: int = 30, per_platform: int = 200) -> li
     Fetch candidate items for ranking: top-quality items per platform ingested
     within `lookback_days`. Used by both the web feed and email digest.
     """
-    since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    since = datetime.now(UTC) - timedelta(days=lookback_days)
     items_by_id: dict[str, ContentItem] = {}
     for source in Source:
         batch = (

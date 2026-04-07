@@ -1,14 +1,14 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     DateTime,
     Enum,
     Float,
     ForeignKey,
     Index,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -43,7 +43,7 @@ SourceSurfaceEnum = Enum(
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +112,9 @@ class ContentItem(Base):
     authenticity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     calmness_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     content_type: Mapped[str | None] = mapped_column(ContentTypeEnum, nullable=True)
-    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSON, nullable=False, default=dict,
+    )
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )

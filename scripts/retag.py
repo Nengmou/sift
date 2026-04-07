@@ -24,7 +24,8 @@ BATCH_SIZE = 50
 
 _TAG_LIST = ", ".join(TAG_VOCABULARY)
 
-RETAG_PROMPT = """Pick the TOP 3 most relevant tags for this content from the list below. Maximum 3 tags, minimum 0.
+RETAG_PROMPT = """\
+Pick the TOP 3 most relevant tags for this content from the list below. Max 3, min 0.
 Base your tags on what is explicitly stated in the title and body.
 
 Tags: {tag_list}
@@ -73,7 +74,8 @@ async def _classify_tags(item: ContentItem, client: httpx.AsyncClient) -> list[d
         for t in raw_tags:
             if isinstance(t, dict) and t.get("tag") in TAG_VOCABULARY_SET and t["tag"] not in seen:
                 seen.add(t["tag"])
-                validated.append({"tag": t["tag"], "relevance": float(max(0.0, min(1.0, t["relevance"])))})
+                relevance = float(max(0.0, min(1.0, t["relevance"])))
+                validated.append({"tag": t["tag"], "relevance": relevance})
         return validated
     except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as e:
         logger.warning("Tag classification failed for %s: %s", item.source_id, e)
@@ -112,7 +114,10 @@ async def run_retag() -> None:
                         "tags": tags,
                     }
                 db.commit()
-                logger.info("Committed batch %d–%d (%d items tagged)", i + 1, i + len(batch), len(batch))
+                logger.info(
+                    "Committed batch %d–%d (%d items tagged)",
+                    i + 1, i + len(batch), len(batch),
+                )
 
         logger.info("Retag complete")
     finally:

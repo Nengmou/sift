@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ def get_current_user(
         db.query(UserSession)
         .filter(
             UserSession.token == session_token,
-            UserSession.expires_at > datetime.now(timezone.utc),
+            UserSession.expires_at > datetime.now(UTC),
         )
         .first()
     )

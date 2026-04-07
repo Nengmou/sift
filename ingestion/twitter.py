@@ -42,7 +42,7 @@ class TwitterConnector(BaseConnector):
         return sorted(
             items_by_id.values(),
             key=lambda item: item.published_at or datetime.datetime.min.replace(
-                tzinfo=datetime.timezone.utc
+                tzinfo=datetime.UTC
             ),
             reverse=True,
         )

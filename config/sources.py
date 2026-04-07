@@ -11,7 +11,7 @@ Avoid: pundits, engagement farmers, institutional PR accounts.
 
 RSS_FEEDS: list[str] = [
     # --- Practitioner blogs (highest signal) ---
-    "https://simonwillison.net/atom/everything/",           # Simon Willison — builds with LLMs daily
+    "https://simonwillison.net/atom/everything/",           # Simon Willison — LLMs daily
     "https://karpathy.github.io/feed.xml",                  # Andrej Karpathy
     "https://eugeneyan.com/rss/",                           # Eugene Yan — applied ML, LLM evals
     "https://huyenchip.com/feed.xml",                       # Chip Huyen — ML systems, deployment
@@ -22,7 +22,7 @@ RSS_FEEDS: list[str] = [
     "https://jalammar.github.io/feed.xml",                  # Jay Alammar — transformer explainers
     "https://colah.github.io/rss.xml",                      # Chris Olah — interpretability
     "https://www.fast.ai/index.xml",                        # Jeremy Howard / fast.ai
-    "https://timdettmers.com/feed/",                        # Tim Dettmers — quantization, efficient training
+    "https://timdettmers.com/feed/",                        # Tim Dettmers — quantization
     "https://interconnects.ai/feed",                        # Nathan Lambert — RLHF, alignment
     "https://shreyashankar.substack.com/feed",              # Shreya Shankar — ML production, evals
     "https://joshtobin.com/feed.xml",                       # Josh Tobin — applied ML
@@ -30,9 +30,9 @@ RSS_FEEDS: list[str] = [
 
     # --- Technical newsletters ---
     "https://importai.substack.com/feed",                   # Jack Clark — Import AI weekly
-    "https://www.latent.space/feed",                        # Latent Space — builders interviewing builders
+    "https://www.latent.space/feed",                        # Latent Space — builder interviews
     "https://thegradient.pub/rss/",                         # The Gradient — long-form technical
-    "https://aisnakeoil.substack.com/feed",                 # Arvind Narayanan — skeptical counterbalance
+    "https://aisnakeoil.substack.com/feed",                 # Arvind Narayanan — skeptical takes
     "https://www.deeplearning.ai/the-batch/feed/",          # The Batch — Andrew Ng
     "https://ethanmollick.substack.com/feed",               # Ethan Mollick — One Useful Thing
     "https://buttondown.email/ainews/rss",                  # AI News — daily research digest

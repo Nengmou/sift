@@ -27,6 +27,7 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 from web import routes as web_routes  # noqa: E402
+
 app.include_router(web_routes.router)
 app.include_router(auth.router, prefix="/api")
 app.include_router(webhook.router, prefix="/api")
