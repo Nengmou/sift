@@ -90,9 +90,9 @@ def feed(
     hour = datetime.now().hour
     greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
     items = fetch_candidates(db)
-    ranked = rank_items_for_user(items, user)
+    ranked = rank_items_for_user(items, user, target_size=20)
     return templates.TemplateResponse(
-        request, "feed.html", {"user": user, "items": ranked[:20], "greeting": greeting}
+        request, "feed.html", {"user": user, "items": ranked, "greeting": greeting}
     )
 
 

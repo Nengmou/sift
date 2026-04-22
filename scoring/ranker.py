@@ -63,21 +63,34 @@ def _relevance_score(item: ContentItem, user: User) -> float:
     return matched_relevance / len(tags)
 
 
+NEWS_QUOTA_RATIO = 0.2  # 20% of final delivery reserved for news items
+
+
+def _is_news(item: ContentItem) -> bool:
+    return (item.metadata_json or {}).get("kind") == "news"
+
+
 def compute_rank(item: ContentItem, user: User) -> float:
     """
     Composite rank score for `item` relative to `user`.
 
-    score = relevance × (0.5×authenticity + 0.3×calmness + 0.2×quality)
+    Two scoring paths by source kind (set at ingest in `metadata_json["kind"]`):
+    - News (first-party lab/corporate content):
+        score = relevance × (0.6·quality + 0.4·calmness)
+      Authenticity is dropped — polished release content should not be penalized
+      on a dimension that doesn't apply to it.
+    - Authentic (default — practitioner voices, community content):
+        score = relevance × (0.5·authenticity + 0.3·calmness + 0.2·quality)
 
     Relevance is a multiplier: items with no interest match score 0 and
     naturally fall out of the feed without needing an explicit filter.
-    Content quality weights reflect editorial bias toward authentic,
-    calm practitioner voices (authenticity > calmness > quality).
     """
     q = item.quality_score or 0.0
     a = item.authenticity_score or 0.0
     c = item.calmness_score or 0.0
     r = _relevance_score(item, user)
+    if _is_news(item):
+        return round(r * (0.6 * q + 0.4 * c), 4)
     return round(r * (0.5 * a + 0.3 * c + 0.2 * q), 4)
 
 
@@ -144,6 +157,40 @@ def fetch_candidates(db, lookback_days: int = 30, per_platform: int = 200) -> li
     return list(items_by_id.values())
 
 
+def _apply_news_quota(
+    ranked: list[ContentItem], user: User, target_size: int
+) -> list[ContentItem]:
+    """
+    Enforce a 20/80 news-vs-authentic split on `ranked`, trimmed to `target_size`.
+
+    If one bucket is short of its quota, the shortfall is backfilled from the
+    other bucket's remaining items. Result is re-sorted by composite rank.
+    """
+    news_quota = round(target_size * NEWS_QUOTA_RATIO)
+    authentic_quota = target_size - news_quota
+
+    news = [i for i in ranked if _is_news(i)]
+    authentic = [i for i in ranked if not _is_news(i)]
+
+    picked_news = news[:news_quota]
+    picked_authentic = authentic[:authentic_quota]
+
+    shortfall = target_size - len(picked_news) - len(picked_authentic)
+    if shortfall > 0:
+        leftovers = news[len(picked_news):] + authentic[len(picked_authentic):]
+        backfill = sorted(
+            leftovers, key=lambda i: compute_rank(i, user), reverse=True
+        )[:shortfall]
+        for item in backfill:
+            if _is_news(item):
+                picked_news.append(item)
+            else:
+                picked_authentic.append(item)
+
+    merged = picked_news + picked_authentic
+    return sorted(merged, key=lambda i: compute_rank(i, user), reverse=True)
+
+
 def rank_items_for_user(
     items: list[ContentItem],
     user: User,
@@ -152,6 +199,7 @@ def rank_items_for_user(
     shortlist_max_per_publisher: int = 5,
     max_per_content_type: int = 8,
     target_min_items: int = 8,
+    target_size: int | None = None,
 ) -> list[ContentItem]:
     """
     Return items sorted by composite rank with diversity enforced.
@@ -160,6 +208,11 @@ def rank_items_for_user(
     `max_per_publisher` caps repeated publishers/communities/channels/accounts
     in the final list.
     `shortlist_max_per_publisher` caps publisher contribution before final selection.
+
+    When `target_size` is provided, a 20/80 news-vs-authentic quota is enforced
+    and the result is trimmed to `target_size`. If either bucket is short, the
+    other backfills. When `target_size` is None, the full diversity-capped list
+    is returned and the caller is responsible for slicing.
     """
     available_sources = _available_source_count(items)
     effective_max_per_platform = max_per_platform
@@ -189,6 +242,9 @@ def rank_items_for_user(
         if len(ranked) > len(best_ranked):
             best_ranked = ranked
         if len(ranked) >= target_min_items:
-            return ranked
+            best_ranked = ranked
+            break
 
-    return best_ranked
+    if target_size is None:
+        return best_ranked
+    return _apply_news_quota(best_ranked, user, target_size)

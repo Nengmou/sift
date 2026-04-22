@@ -8,6 +8,7 @@ import logging
 
 import httpx
 
+from config.sources import YOUTUBE_NEWS_CHANNEL_IDS_SET
 from ingestion.base import BaseConnector, RawItem, Source
 
 BASE_URL = "https://www.googleapis.com/youtube/v3"
@@ -105,6 +106,14 @@ class YouTubeConnector(BaseConnector):
                 body_text=snippet.get("description"),
                 published_at=published_at,
                 content_type="video",
-                metadata={"channel_id": channel_id, "thumbnail": snippet.get("thumbnails", {})},
+                metadata={
+                    "channel_id": channel_id,
+                    "thumbnail": snippet.get("thumbnails", {}),
+                    "kind": (
+                        "news"
+                        if channel_id in YOUTUBE_NEWS_CHANNEL_IDS_SET
+                        else "authentic"
+                    ),
+                },
             ))
         return items

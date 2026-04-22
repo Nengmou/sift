@@ -29,7 +29,7 @@ def run_delivery() -> None:
         for user in users:
             try:
                 candidates = fetch_candidates(db)
-                ranked = rank_items_for_user(candidates, user)[:EMAIL_PICKS]
+                ranked = rank_items_for_user(candidates, user, target_size=EMAIL_PICKS)
                 if ranked:
                     message_id = send_digest(user, ranked)
                     logger.info(

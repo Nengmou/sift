@@ -3,6 +3,7 @@ import datetime
 
 import httpx
 
+from config.sources import kind_from_url
 from ingestion.base import BaseConnector, RawItem, Source
 
 BASE_URL = "https://www.reddit.com"
@@ -68,5 +69,6 @@ class RedditConnector(BaseConnector):
                 "num_comments": post.get("num_comments", 0),
                 "permalink": f"https://reddit.com{post.get('permalink', '')}",
                 "thumbnail_url": thumbnail_url,
+                "kind": "authentic" if is_self else kind_from_url(url),
             },
         )

@@ -3,6 +3,7 @@ import asyncio
 
 import httpx
 
+from config.sources import kind_from_url
 from ingestion.base import BaseConnector, RawItem, Source
 from ingestion.og_image import fetch_og_image
 
@@ -63,5 +64,6 @@ class HNConnector(BaseConnector):
                 "score": data.get("score", 0),
                 "descendants": data.get("descendants", 0),
                 "thumbnail_url": thumbnail_url,
+                "kind": kind_from_url(data.get("url")),
             },
         )
