@@ -7,6 +7,7 @@ from itertools import islice
 
 import httpx
 
+from config.sources import TWITTER_NEWS_ACCOUNTS_SET
 from ingestion.base import BaseConnector, RawItem, Source
 
 BASE_URL = "https://api.twitter.com/2"
@@ -88,18 +89,24 @@ class TwitterConnector(BaseConnector):
                 if thumbnail_url:
                     break
 
+            username = author.get("username")
             items.append(RawItem(
                 source=Source.TWITTER,
                 source_id=tweet["id"],
                 url=f"https://twitter.com/i/web/status/{tweet['id']}",
                 title=None,
-                author=author.get("username"),
+                author=username,
                 body_text=tweet.get("text"),
                 published_at=published_at,
                 content_type="thread",
                 metadata={
                     "public_metrics": tweet.get("public_metrics", {}),
                     "thumbnail_url": thumbnail_url,
+                    "kind": (
+                        "news"
+                        if username and username in TWITTER_NEWS_ACCOUNTS_SET
+                        else "authentic"
+                    ),
                 },
             ))
         return items

@@ -3,7 +3,20 @@ Curated source lists — the editorial heart of Sift.
 Edit these lists to tune recommendation quality.
 Bias toward: authentic practitioners, builders sharing real experience.
 Avoid: pundits, engagement farmers, institutional PR accounts.
+
+Two-path editorial model:
+- "news" items are first-party lab/corporate AI content (release announcements,
+  official blog posts). Authenticity is NOT the editorial bar for these.
+- "authentic" items are third-party practitioner/creator voices. Authenticity is
+  weighted heavily in scoring.
+
+The `kind` tag is set by each ingestion connector:
+- YouTube:  by channel (YOUTUBE_NEWS_CHANNEL_IDS_SET)
+- RSS:      by feed URL (NEWS_RSS_FEED_URLS)
+- Twitter:  by author (TWITTER_NEWS_ACCOUNTS_SET)
+- HN/Reddit: by destination URL host (NEWS_DOMAINS, via kind_from_url)
 """
+from urllib.parse import urlsplit
 
 # ---------------------------------------------------------------------------
 # RSS / Substack feeds
@@ -206,7 +219,15 @@ TWITTER_ACCOUNTS: list[str] = [
 # Verified ingest list.
 # ---------------------------------------------------------------------------
 
-YOUTUBE_CHANNEL_IDS: list[str] = [
+# First-party frontier-AI business accounts — produce release/news content.
+# Authenticity is NOT an editorial expectation for these.
+YOUTUBE_NEWS_CHANNEL_IDS: list[str] = [
+    "UCXZCJLdBC09xxGZ6gcdrc6A",  # OpenAI
+    "UCrDwWp7EBBv4NwvScIpBDOA",  # Anthropic
+]
+
+# Third-party creators producing authentic digests, reviews, and POV.
+YOUTUBE_AUTHENTIC_CHANNEL_IDS: list[str] = [
     "UCXUPKJO5MZQN11PqgIvyuvQ",  # Andrej Karpathy
     "UCZHmQk67mSJgfCCTn7xBfew",  # Yannic Kilcher
     "UCfzlCWGWYyIQ0aLC5w48gBQ",  # sentdex
@@ -220,8 +241,6 @@ YOUTUBE_CHANNEL_IDS: list[str] = [
     "UCC-lyoTfSrcJzA1ab3APAgw",  # LangChain
     "UCeRjipR4_SsCddq9VZ2AeKg",  # LlamaIndex
     "UCOjD18EJYcsBog4IozkF_7w",  # PyData
-    "UCXZCJLdBC09xxGZ6gcdrc6A",  # OpenAI
-    "UCrDwWp7EBBv4NwvScIpBDOA",  # Anthropic
     "UCSHZKyawb77ixDdsGog4iWA",  # Lex Fridman
     "UC8butISFwT-Wl7EV0hUK0BQ",  # freeCodeCamp.org
     "UC9x0AN7BWHpCDHSm9NiJFJQ",  # NetworkChuck
@@ -233,6 +252,73 @@ YOUTUBE_CHANNEL_IDS: list[str] = [
     "UCQgFQdqiFQ_LfFBGP6z9dqQ",  # Manus AI
     "UC3Sv1JuKpbOx3csUO8FAo5g",  # Zhang Xiaojun Podcast
 ]
+
+# Combined list consumed by the YouTube connector.
+YOUTUBE_CHANNEL_IDS: list[str] = (
+    YOUTUBE_NEWS_CHANNEL_IDS + YOUTUBE_AUTHENTIC_CHANNEL_IDS
+)
+
+YOUTUBE_NEWS_CHANNEL_IDS_SET: frozenset[str] = frozenset(YOUTUBE_NEWS_CHANNEL_IDS)
+
+# ---------------------------------------------------------------------------
+# News-vs-authentic classification
+# First-party AI-lab / corporate sources are tagged "news" at ingest; everything
+# else is "authentic". The ranker applies two scoring formulas based on this tag
+# and the delivery layer enforces a 20/80 news/authentic quota.
+# ---------------------------------------------------------------------------
+
+# First-party AI-lab RSS feeds — subset of RSS_FEEDS.
+NEWS_RSS_FEED_URLS: frozenset[str] = frozenset([
+    "https://openai.com/news/rss.xml",
+    "https://www.anthropic.com/news/rss.xml",
+    "https://deepmind.google/blog/rss.xml",
+    "https://ai.meta.com/blog/rss/",
+    "https://research.google/blog/rss/",
+    "https://mistral.ai/news/feed.xml",
+    "https://txt.cohere.com/rss/",
+    "https://huggingface.co/blog/feed.xml",
+])
+
+# First-party AI-lab / corporate AI domains. HN and Reddit classify items by
+# the destination URL host: if the link points here, the item is news regardless
+# of which community surfaced it.
+NEWS_DOMAINS: frozenset[str] = frozenset([
+    "openai.com",
+    "anthropic.com",
+    "deepmind.google",
+    "ai.meta.com",
+    "research.google",
+    "mistral.ai",
+    "txt.cohere.com",
+    "cohere.com",
+    "blogs.nvidia.com",
+    "huggingface.co",
+])
+
+# First-party Twitter/X handles — lab and corporate accounts.
+TWITTER_NEWS_ACCOUNTS_SET: frozenset[str] = frozenset([
+    "OpenAI",
+    "OpenAIDevs",
+    "AnthropicAI",
+    "GoogleDeepMind",
+    "AIatMeta",
+    "MistralAI",
+    "cohere",
+    "nvidia",
+    "NVIDIAAIDev",
+    "huggingface",
+])
+
+
+def kind_from_url(url: str | None) -> str:
+    """Classify a URL's destination: "news" if host is a first-party AI-lab domain."""
+    if not url:
+        return "authentic"
+    host = (urlsplit(url).netloc or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return "news" if host in NEWS_DOMAINS else "authentic"
+
 
 # ---------------------------------------------------------------------------
 # Tag vocabulary for LLM-based semantic tagging

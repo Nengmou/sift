@@ -6,6 +6,7 @@ from email.utils import parsedate_to_datetime
 import feedparser
 import httpx
 
+from config.sources import NEWS_RSS_FEED_URLS
 from ingestion.base import BaseConnector, RawItem, Source
 from ingestion.og_image import fetch_og_image
 
@@ -85,6 +86,10 @@ class RSSConnector(BaseConnector):
                 body_text=body,
                 published_at=published_at,
                 content_type="article",
-                metadata={"feed_url": url, "thumbnail_url": thumbnail_url},
+                metadata={
+                    "feed_url": url,
+                    "thumbnail_url": thumbnail_url,
+                    "kind": "news" if url in NEWS_RSS_FEED_URLS else "authentic",
+                },
             ))
         return items

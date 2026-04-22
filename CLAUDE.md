@@ -93,13 +93,35 @@ Three dimensions, all 0–1 floats (higher = better):
 **Do not** add engagement metrics (likes, views, shares) to scoring. The editorial bias is
 toward authentic builders over pundits and engagement farmers.
 
-Composite rank (see `scoring/ranker.py`):
+### News vs. authentic: two paths
+
+Each ingested item is tagged with `metadata_json["kind"]` = `"news"` or `"authentic"`.
+First-party lab/corporate content is news; third-party practitioner content is authentic.
+Classification rules live in `config/sources.py`:
+
+- **YouTube**: `YOUTUBE_NEWS_CHANNEL_IDS_SET` (channel-based)
+- **RSS**: `NEWS_RSS_FEED_URLS` (feed-URL-based)
+- **Twitter**: `TWITTER_NEWS_ACCOUNTS_SET` (author-based)
+- **HN / Reddit**: `kind_from_url()` against `NEWS_DOMAINS` — community aggregators
+  classify items by their *destination URL host* (a link to openai.com surfaced by HN
+  is still news).
+
+Two-path composite rank (see `scoring/ranker.py:compute_rank`):
 ```
-score = relevance × (authenticity×0.5 + calmness×0.3 + quality×0.2)
+news:      score = relevance × (quality×0.6 + calmness×0.4)
+authentic: score = relevance × (authenticity×0.5 + calmness×0.3 + quality×0.2)
 ```
-Relevance is a multiplier derived from LLM tag–to–interest matching (0–1). Items with
-no interest match score 0 and naturally fall out. For untagged items, token overlap
-against interest labels is used as the relevance proxy.
+News drops authenticity because a polished corporate release shouldn't be penalized on
+a dimension that doesn't apply. Relevance is a multiplier derived from LLM
+tag–to–interest matching (0–1); no-match items score 0 and fall out. For untagged
+items, token overlap against interest labels is used as the relevance proxy.
+
+### Delivery quota: 20% news / 80% authentic
+
+`rank_items_for_user(items, user, target_size=N)` enforces a 20/80 split on the final
+list. For the 5-item email digest that's 1 news + 4 authentic; for the 20-item web feed,
+4 + 16. If one bucket is short, the other backfills. Callers that want the raw
+diversity-capped list omit `target_size`.
 
 Diversity caps enforce max 3 items per platform and max 2 per publisher in the final list.
 

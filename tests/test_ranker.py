@@ -172,6 +172,91 @@ def test_high_authenticity_calm_item_survives_as_exploration():
     )
 
 
+def test_news_path_drops_authenticity_penalty():
+    """News items use quality+calmness only; low authenticity should not hurt them."""
+    user = make_user()
+    news_item = make_item(
+        "rss", "OpenAI release",
+        quality=0.8, authenticity=0.1, calmness=0.9,
+        metadata_json={"kind": "news"},
+    )
+    authentic_item = make_item(
+        "rss", "Practitioner post",
+        quality=0.8, authenticity=0.1, calmness=0.9,
+        metadata_json={"kind": "authentic"},
+    )
+    # news = 1.0 * (0.6*0.8 + 0.4*0.9) = 0.84
+    # authentic = 1.0 * (0.5*0.1 + 0.3*0.9 + 0.2*0.8) = 0.48
+    assert compute_rank(news_item, user) == 0.84
+    assert compute_rank(authentic_item, user) == 0.48
+    assert compute_rank(news_item, user) > compute_rank(authentic_item, user)
+
+
+def test_missing_kind_defaults_to_authentic_formula():
+    """Items without metadata_json['kind'] use the authentic path (backwards compat)."""
+    user = make_user()
+    item = make_item("rss", "Untagged", quality=0.8, authenticity=0.8, calmness=0.8)
+    assert compute_rank(item, user) == 0.8
+
+
+def _quota_items(news_count: int, authentic_count: int):
+    news = [
+        make_item(
+            "rss", f"news {i}",
+            url=f"https://news{i}.example.com/post",
+            metadata_json={"kind": "news"},
+            content_type="article",
+        )
+        for i in range(news_count)
+    ]
+    authentic = [
+        make_item(
+            "reddit", f"authentic {i}",
+            metadata_json={"kind": "authentic", "subreddit": f"sub{i}"},
+            content_type="post",
+        )
+        for i in range(authentic_count)
+    ]
+    return news + authentic
+
+
+def test_target_size_enforces_20_80_quota():
+    user = make_user()
+    items = _quota_items(news_count=10, authentic_count=10)
+    ranked = rank_items_for_user(items, user, target_size=5)
+    assert len(ranked) == 5
+    assert sum(1 for i in ranked if i.metadata_json.get("kind") == "news") == 1
+    assert sum(1 for i in ranked if i.metadata_json.get("kind") == "authentic") == 4
+
+
+def test_target_size_backfills_when_news_is_empty():
+    user = make_user()
+    items = _quota_items(news_count=0, authentic_count=10)
+    ranked = rank_items_for_user(items, user, target_size=5)
+    assert len(ranked) == 5
+    assert all(i.metadata_json.get("kind") == "authentic" for i in ranked)
+
+
+def test_target_size_backfills_when_authentic_is_short():
+    user = make_user()
+    items = _quota_items(news_count=10, authentic_count=2)
+    ranked = rank_items_for_user(items, user, target_size=5)
+    assert len(ranked) == 5
+    news_count = sum(1 for i in ranked if i.metadata_json.get("kind") == "news")
+    authentic_count = sum(1 for i in ranked if i.metadata_json.get("kind") == "authentic")
+    assert news_count == 3
+    assert authentic_count == 2
+
+
+def test_target_size_none_returns_full_ranked_list():
+    """Without target_size, behavior is unchanged — no quota applied, no trim."""
+    user = make_user()
+    items = _quota_items(news_count=10, authentic_count=10)
+    ranked = rank_items_for_user(items, user)
+    # diversity caps may trim, but the quota must NOT kick in
+    assert len(ranked) > 5
+
+
 def test_adaptive_relaxation_fills_feed_with_default_target():
     user = make_user()
     items = [
